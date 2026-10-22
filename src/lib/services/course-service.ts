@@ -1,8 +1,10 @@
-﻿import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 export function listCourses(includeDraft = false) {
   return prisma.course.findMany({
-    where: includeDraft ? undefined : { status: "PUBLISHED" },
+    where: includeDraft
+      ? { catalogItem: { category: "Courses" } }
+      : { status: "PUBLISHED", catalogItem: { category: "Courses" } },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
     include: {
       _count: { select: { lessons: true, enrollments: true, cohorts: true } },
@@ -12,8 +14,8 @@ export function listCourses(includeDraft = false) {
 }
 
 export function getCourseById(id: string) {
-  return prisma.course.findUnique({
-    where: { id },
+  return prisma.course.findFirst({
+    where: { id, catalogItem: { category: "Courses" } },
     include: {
       lessons: { orderBy: { sortOrder: "asc" }, include: { materials: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } } },
       cohorts: { orderBy: { startsAt: "asc" } },

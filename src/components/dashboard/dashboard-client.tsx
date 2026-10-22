@@ -46,14 +46,14 @@ export function DashboardClient({ userName, dashboard }: { userName: string; das
               return (
                 <motion.div key={metric.key} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
                   <Card className="border-slate-200/80 bg-white shadow-none ring-0 transition-shadow hover:shadow-sm">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex size-9 items-center justify-center rounded-lg bg-[#eef0ff] text-[#5146e5]"><Icon className="size-4.5" /></div>
                         <span className="text-2xl font-extrabold tracking-tight text-slate-900">{metric.value}</span>
                       </div>
-                      <p className="mt-3 truncate text-sm font-bold text-slate-800">{metric.label}</p>
+                      <p className="mt-2 truncate text-sm font-bold text-slate-800">{metric.label}</p>
                       <p className="mt-0.5 truncate text-xs text-slate-500">{metric.detail}</p>
-                      <Link href={metric.href} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#5146e5] hover:underline">Open <ArrowUpRight className="size-3.5" /></Link>
+                      <Link href={metric.href} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#5146e5] hover:underline">Open <ArrowUpRight className="size-3.5" /></Link>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -94,4 +94,5 @@ export function DashboardClient({ userName, dashboard }: { userName: string; das
     </div>
   );
 }
+
 

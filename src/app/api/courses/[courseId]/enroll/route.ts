@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/authorization/permissions";
 import { prisma } from "@/lib/db/prisma";
@@ -9,7 +9,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ co
   if (!actor) return NextResponse.json({ code: "AUTH_REQUIRED", message: "Sign in to continue with enrollment." }, { status: 401 });
   if (!hasPermission(actor, "enrollments.apply")) return NextResponse.json({ code: "FORBIDDEN", message: "Your account cannot request enrollment." }, { status: 403 });
   const { courseId } = await params;
-  const course = await prisma.course.findFirst({ where: { id: courseId, status: "PUBLISHED" }, select: { id: true, title: true, slug: true } });
+  const course = await prisma.course.findFirst({ where: { id: courseId, status: "PUBLISHED", catalogItem: { category: "Courses" } }, select: { id: true, title: true, slug: true } });
   if (!course) return NextResponse.json({ code: "COURSE_UNAVAILABLE", message: "This course is not currently open for enrollment." }, { status: 404 });
   const existing = await prisma.enrollment.findFirst({ where: { courseId, learnerId: actor.id, status: { notIn: ["REJECTED", "WITHDRAWN"] } }, select: { id: true, status: true } });
   const loginUrl = `${process.env.APP_URL?.replace(/\/$/, "") || "http://localhost:3002"}/login`;

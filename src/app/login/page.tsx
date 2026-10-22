@@ -28,7 +28,12 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password, rememberMe }),
       });
       if (!response.ok) throw new Error("Invalid credentials");
-      router.replace("/dashboard");
+      const course = new URLSearchParams(window.location.search).get("course");
+      if (course) {
+        const enrollmentResponse = await fetch("/api/courses/enroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ course }) });
+        if (!enrollmentResponse.ok && enrollmentResponse.status !== 409) throw new Error("Your account is signed in, but the enrollment could not be completed.");
+      }
+      router.replace(course ? "/dashboard/enrollments" : "/dashboard");
     } catch {
       setError("The email or password is not correct.");
     } finally {

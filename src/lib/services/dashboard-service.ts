@@ -44,7 +44,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
 
   if (can("applications.review")) {
     const value = await prisma.application.count({ where: { status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } });
-    metrics.push({ key: "applications", label: "Applications to review", value, detail: "Awaiting a decision", href: "/dashboard/applications", permission: "applications.review" });
+    metrics.push({ key: "applications", label: "Applications to review", value, detail: "Awaiting a decision", href: "/dashboard/application-review", permission: "applications.review" });
   }
 
   if (learnerOnly && can("enrollments.apply")) {
@@ -63,4 +63,5 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
 
   return { roles, permissions, metrics };
 }
+
 

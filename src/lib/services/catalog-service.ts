@@ -4,11 +4,14 @@ import { parseCatalogPresentation } from "@/lib/content/catalog-schemas";
 export type CatalogQuery = {
   category?: string;
   search?: string;
-  limit?: number;
+  page?: number;
+  pageSize?: number;
 };
 
 export async function listPublishedCatalogItems(query: CatalogQuery = {}) {
-  const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+  const page = Math.max(query.page ?? 1, 1);
+  const pageSize = Math.min(Math.max(query.pageSize ?? 24, 1), 100);
+  const skip = (page - 1) * pageSize;
   const search = query.search?.trim();
   const where = {
     status: "PUBLISHED" as const,
@@ -19,7 +22,8 @@ export async function listPublishedCatalogItems(query: CatalogQuery = {}) {
   const [items, total] = await Promise.all([
     prisma.catalogItem.findMany({
       where,
-      take: limit,
+      skip,
+      take: pageSize,
       orderBy: [{ sortOrder: "asc" }, { publishedAt: "desc" }, { title: "asc" }],
       select: {
         id: true,
@@ -43,6 +47,7 @@ export async function listPublishedCatalogItems(query: CatalogQuery = {}) {
         imageAsset: { select: { url: true, publicId: true, alternativeText: true } },
         courseCategory: { select: { name: true, slug: true } },
         course: { select: { id: true, slug: true } },
+        programCourses: { orderBy: { sortOrder: "asc" }, select: { sortOrder: true, course: { select: { id: true, slug: true, title: true, summary: true, level: true, durationWeeks: true, status: true, catalogItem: { select: { title: true, slug: true, imageAsset: { select: { url: true, alternativeText: true } } } } } } } },
         stats: true,
         learningOutcomes: true,
         details: true,
@@ -57,6 +62,7 @@ export async function listPublishedCatalogItems(query: CatalogQuery = {}) {
     data: items.map((item) => ({
       ...item,
       rating: item.rating?.toString() ?? null,
+      relatedCourses: item.programCourses.map(({ sortOrder, course }) => ({ sortOrder, ...course })),
       presentation: parseCatalogPresentation({
         stats: item.stats,
         learningOutcomes: item.learningOutcomes,
@@ -65,7 +71,7 @@ export async function listPublishedCatalogItems(query: CatalogQuery = {}) {
         courseTestimonials: item.courseTestimonials,
       }),
     })),
-    meta: { total, limit },
+    meta: { total, page, pageSize, pageCount: Math.ceil(total / pageSize) },
   };
 }
 
@@ -94,6 +100,7 @@ export async function getPublishedCatalogItem(slug: string) {
       imageAsset: { select: { url: true, publicId: true, alternativeText: true } },
       courseCategory: { select: { name: true, slug: true } },
       course: { select: { id: true, slug: true } },
+      programCourses: { orderBy: { sortOrder: "asc" }, select: { sortOrder: true, course: { select: { id: true, slug: true, title: true, summary: true, level: true, durationWeeks: true, status: true, catalogItem: { select: { title: true, slug: true, imageAsset: { select: { url: true, alternativeText: true } } } } } } } },
       stats: true,
       learningOutcomes: true,
       details: true,
@@ -105,6 +112,7 @@ export async function getPublishedCatalogItem(slug: string) {
   return {
     ...item,
     rating: item.rating?.toString() ?? null,
+      relatedCourses: item.programCourses.map(({ sortOrder, course }) => ({ sortOrder, ...course })),
     presentation: parseCatalogPresentation({
       stats: item.stats,
       learningOutcomes: item.learningOutcomes,

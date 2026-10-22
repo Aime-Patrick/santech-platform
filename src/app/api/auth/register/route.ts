@@ -1,9 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { sendLearnerWelcomeEmail } from "@/lib/email/learner-email";
+import { sendEnrollmentConfirmationEmail, sendLearnerWelcomeEmail } from "@/lib/email/learner-email";
+import { requestCourseEnrollment } from "@/lib/services/enrollment-service";
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
@@ -11,6 +12,7 @@ const registerSchema = z.object({
   email: z.email(),
   password: z.string().min(8).max(128),
   rememberMe: z.boolean().optional().default(false),
+  course: z.string().trim().max(200).optional(),
 });
 
 export async function POST(request: Request) {
@@ -38,7 +40,16 @@ export async function POST(request: Request) {
 
   await createSession(user.id, parsed.data.rememberMe);
   const emailSent = await sendLearnerWelcomeEmail({ to: user.email, firstName: user.firstName });
-  return NextResponse.json({ user, emailSent }, { status: 201 });
+  let enrollment: unknown = null;
+  let enrollmentEmailSent = false;
+  if (parsed.data.course) {
+    const result = await requestCourseEnrollment({ learnerId: user.id, courseRef: parsed.data.course });
+    if (result.kind === "created") {
+      enrollment = result.enrollment;
+      enrollmentEmailSent = await sendEnrollmentConfirmationEmail({ to: user.email, firstName: user.firstName, courseTitle: result.course.title, enrollmentStatus: result.enrollment.status });
+    }
+  }
+  return NextResponse.json({ user, emailSent, enrollment, enrollmentEmailSent }, { status: 201 });
 }
 
 

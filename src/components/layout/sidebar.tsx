@@ -57,11 +57,13 @@ export type AppSidebarProps = {
   permissions: string[];
   userName: string;
   roles: string[];
+  isLearner: boolean;
+  learnerTracks: Array<{ id: string; title: string }>;
 };
 
 export type SidebarSection = "reports" | "learning" | "content" | "users" | "analytics" | "search" | "settings" | null;
 const websiteContentTypes = [
-  "certificate", "company-value", "course-category", "course-skill", "course-tool",
+  "certificate", "company-value",
   "driving-change-story", "driving-change-topic", "e-visitors-feature", "faq-item",
   "focus-area", "home-story-slide", "innovation-product", "innovation-service",
   "innovation-solution", "journey-stage", "opportunity", "partner-brand",
@@ -83,7 +85,7 @@ export function getSectionFromPath(pathname: string): SidebarSection {
     pathname.startsWith("/dashboard/cohorts") ||
     pathname.startsWith("/dashboard/enrollments") ||
     pathname.startsWith("/dashboard/certificates")
-  ) {
+    || pathname.startsWith("/dashboard/catalog")  ) {
     return "learning";
   }
   if (
@@ -100,15 +102,14 @@ export function getSectionFromPath(pathname: string): SidebarSection {
   }
   if (
     pathname.startsWith("/dashboard/roles") ||
-    pathname.startsWith("/dashboard/audit-logs") ||
-    pathname.startsWith("/dashboard/catalog")
+    pathname.startsWith("/dashboard/audit-logs")
   ) {
     return "settings";
   }
   return null;
 }
 
-export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProps) {
+export function AppSidebar({ permissions = [], userName, roles, isLearner, learnerTracks }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -128,7 +129,7 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
   const canContent = canAny(["courses.view", "courses.create", "courses.update"]);
   const canUsers = canAny(["users.view", "users.manage", "applications.review"]);
   const canReports = canAny(["grades.view", "attendance.view", "courses.view", "enrollments.review"]);
-  const canSettings = canAny(["roles.view", "roles.manage", "audit_logs.view", "courses.view"]);
+  const canSettings = canAny(["roles.view", "roles.manage", "audit_logs.view"]);
 
   // Detect section from current path
   const currentPathSection = getSectionFromPath(pathname);
@@ -597,7 +598,13 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
                           className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
                         >
                           <BookOpen className="size-4 text-slate-500" strokeWidth={1.8} />
-                          <span>Course Catalog</span>
+                          <span>Courses</span>
+                        </Link>
+                      )}
+                      {can("courses.update") && (
+                        <Link href="/dashboard/catalog/organization" data-active={pathname === "/dashboard/catalog/organization" ? "" : undefined} className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900">
+                          <Layers className="size-4 text-slate-500" strokeWidth={1.8} />
+                          <span>Catalog organization</span>
                         </Link>
                       )}
                       {(can("cohorts.manage") || can("courses.view")) && (
@@ -632,39 +639,18 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
                       )}
                     </nav>
 
-                    <Collapsible open={tracksOpen} onOpenChange={setTracksOpen} className="mt-5">
-                      <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between px-3 py-1.5 text-left text-[13px] font-semibold text-slate-900 transition-colors hover:text-slate-700">
-                        <div className="flex items-center gap-2">
-                          <span>Programs & Tracks</span>
-                          <Badge variant="outline" className="h-4 border-transparent bg-slate-200/60 px-1.5 text-[11px] font-medium text-slate-600 tabular-nums">
-                            4
-                          </Badge>
-                        </div>
-                        <ChevronDown className={`size-3.5 text-slate-400 transition-transform duration-200 ${tracksOpen ? "" : "-rotate-90"}`} />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-1 space-y-1">
-                          <Link href="/dashboard/courses" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-100/70">
-                            <span className="flex size-5 items-center justify-center rounded-md bg-[#0ea5e9] text-white">
-                              <BookOpen className="size-3" />
-                            </span>
-                            <span className="truncate">Full-Stack Development</span>
-                          </Link>
-                          <Link href="/dashboard/courses" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-100/70">
-                            <span className="flex size-5 items-center justify-center rounded-md bg-[#059669] text-white">
-                              <Folder className="size-3" />
-                            </span>
-                            <span className="truncate">Cloud & DevOps</span>
-                          </Link>
-                          <Link href="/dashboard/courses" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-100/70">
-                            <span className="flex size-5 items-center justify-center rounded-md bg-[#7c3aed] text-white">
-                              <Sparkles className="size-3" />
-                            </span>
-                            <span className="truncate">Data & AI Engineering</span>
-                          </Link>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                    {(isLearner || can("courses.view")) ? (
+                      <Collapsible open={tracksOpen} onOpenChange={setTracksOpen} className="mt-5">
+                        <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between px-3 py-1.5 text-left text-[13px] font-semibold text-slate-900">
+                          <div className="flex items-center gap-2"><span>{isLearner ? "My Programs & Tracks" : "Programs & Courses"}</span><Badge variant="outline" className="h-4 border-transparent bg-slate-200/60 px-1.5 text-[11px] text-slate-600">{isLearner ? learnerTracks.length : "All"}</Badge></div>
+                          <ChevronDown className={`size-3.5 text-slate-400 transition-transform ${tracksOpen ? "" : "-rotate-90"}`} />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent><div className="mt-1 space-y-1">
+                          {learnerTracks.length ? learnerTracks.map((track) => <Link key={track.id} href={`/dashboard/courses/${track.id}`} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-100/70"><span className="flex size-5 items-center justify-center rounded-md bg-[#0ea5e9] text-white"><BookOpen className="size-3" /></span><span className="truncate">{track.title}</span></Link>) : <Link href="/dashboard/courses" className="block rounded-xl px-3 py-2 text-[13px] text-slate-500 hover:bg-slate-100/70">{isLearner ? "Explore courses to start a track" : "View all programs and courses"}</Link>}
+                        </div></CollapsibleContent>
+                      </Collapsible>
+                    ) : null}
+
                   </div>
 
                   <div className="p-3">
@@ -692,9 +678,11 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
                     <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Collection types <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">{websiteContentTypes.length}</span></div>
                     <nav aria-label="Website content collections" className="space-y-0.5">
                       {filteredContentTypes.map((type) => (
-                        <Link key={type} href={`/dashboard/website-content?type=${type}`} data-active={new URLSearchParams(searchParams.toString()).get("type") === type ? "" : undefined} className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#eef0ff] data-active:font-semibold data-active:text-[#4038c9]"><span className="text-[10px]">•</span><span>{contentTypeLabel(type)}</span></Link>
+                        <Link key={type} href={`/dashboard/website-content?type=${type}`} data-active={new URLSearchParams(searchParams.toString()).get("type") === type ? "" : undefined} className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#eef0ff] data-active:font-semibold data-active:text-[#4038c9]"><span className="text-[10px]">â€¢</span><span>{contentTypeLabel(type)}</span></Link>
                       ))}
                     </nav>
+
+
                   </div>
                 </>
               )}
@@ -705,8 +693,10 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
                   <div className="flex flex-1 flex-col overflow-y-auto px-3.5 pb-4">
                     <nav aria-label="Users Quick Links" className="space-y-1">
                       <Link href="/dashboard/users" data-active={pathname === "/dashboard/users" ? "" : undefined} className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"><Users className="size-4 text-slate-500" strokeWidth={1.8} /><span>Users</span></Link>
-                      <Link href="/dashboard/applications" data-active={pathname.startsWith("/dashboard/applications") ? "" : undefined} className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"><UserPlus className="size-4 text-slate-500" strokeWidth={1.8} /><span>Applications</span></Link>
+                      {canAny(["applications.create", "applications.review"]) && <Link href={can("applications.review") ? "/dashboard/application-review" : "/dashboard/applications"} data-active={pathname.startsWith("/dashboard/applications") || pathname.startsWith("/dashboard/application-review") ? "" : undefined} className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"><UserPlus className="size-4 text-slate-500" strokeWidth={1.8} /><span>{can("applications.review") ? "Application management" : "My applications"}</span></Link>}
                     </nav>
+
+
                   </div>
                 </>
               )}
@@ -875,22 +865,6 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
                         <span>Roles & RBAC</span>
                       </Link>
                       <Link
-                        href="/dashboard/catalog"
-                        data-active={pathname === "/dashboard/catalog" ? "" : undefined}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
-                      >
-                        <BookOpen className="size-4 text-slate-500" strokeWidth={1.8} />
-                        <span>Content catalog</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/catalog/organization"
-                        data-active={pathname === "/dashboard/catalog/organization" ? "" : undefined}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
-                      >
-                        <Layers className="size-4 text-slate-500" strokeWidth={1.8} />
-                        <span>Catalog organization</span>
-                      </Link>
-                      <Link
                         href="/dashboard/audit-logs"
                         data-active={pathname === "/dashboard/audit-logs" ? "" : undefined}
                         className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
@@ -946,6 +920,8 @@ export function AppSidebar({ permissions = [], userName, roles }: AppSidebarProp
     </motion.aside>
   );
 }
+
+
 
 
 

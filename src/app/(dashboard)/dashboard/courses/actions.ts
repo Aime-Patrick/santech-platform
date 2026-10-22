@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -121,7 +121,7 @@ export async function assignInstructorToCourse(courseId: string, formData: FormD
 
 export async function applyForEnrollment(courseId: string) {
   const actor = await requirePermission("enrollments.apply");
-  const course = await prisma.course.findFirst({ where: { id: courseId, status: "PUBLISHED" }, select: { id: true, title: true } });
+  const course = await prisma.course.findFirst({ where: { id: courseId, status: "PUBLISHED", catalogItem: { category: "Courses" } }, select: { id: true, title: true } });
   if (!course) throw new Error("This course is not open for enrollment.");
   const existing = await prisma.enrollment.findFirst({ where: { courseId, learnerId: actor.id, status: { notIn: ["REJECTED", "WITHDRAWN"] } } });
   if (existing) throw new Error("You already have an enrollment for this course. Open your learner account to continue.");

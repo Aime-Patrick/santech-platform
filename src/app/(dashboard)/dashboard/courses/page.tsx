@@ -21,18 +21,18 @@ export default async function CoursesPage() {
     <section className="space-y-6">
       <PageHeader
         title="Courses"
-        description="Browse learning pathways, manage course curriculum, and review enrolled learners across cohorts."
+        description="Manage published courses, curriculum, and enrolled learners across cohorts."
         actions={canCreate ? <CourseCreateDrawer action={createCourse} /> : null}
       />
 
       {/* Curriculum Analytics Summary */}
       <AnalyticsCard
         mainDashboard={{
-          title: "Curriculum Velocity & Enrollment Analytics",
-          description: "Real-time engagement across published pathways and enrolled learners",
+          title: "Course activity & enrollment analytics",
+          description: "Real-time activity across published courses and enrolled learners",
           metrics: [
             {
-              label: "Published Tracks",
+              label: "Published Courses",
               value: `${published} / ${courses.length}`,
               percentage: `${publishedPercent}% live`,
               isPositive: true,

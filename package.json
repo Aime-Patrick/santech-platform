@@ -17,6 +17,7 @@
                     "migration:dry-run":  "node scripts/migration/dry-run-strapi.mjs",
                     "migration:import:catalog":  "node scripts/migration/import-strapi-catalog.mjs",
                     "migration:import:content":  "node scripts/migration/import-strapi-content.mjs",
+                    "migration:import:users":  "node scripts/migration/import-strapi-users.mjs",
                     "migration:link:courses":  "node scripts/migration/link-catalog-courses.mjs"
                 },
     "dependencies":  {

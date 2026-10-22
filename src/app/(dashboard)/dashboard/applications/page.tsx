@@ -1,39 +1,140 @@
-import { ClipboardList, FileText, ShieldCheck } from "lucide-react";
+﻿import { redirect } from "next/navigation";
+import { FileText, Paperclip } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/session";
-import { hasAnyPermission, hasPermission } from "@/lib/authorization/permissions";
-import { listLearnerApplications, listApplicationsForReview, listPublishedCoursesForApplication } from "@/lib/services/application-service";
+import { hasPermission } from "@/lib/authorization/permissions";
+import { listLearnerApplications, listPublishedCoursesForApplication } from "@/lib/services/application-service";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { submitApplication, updateApplicationStatus } from "./actions";
-
+import { submitApplication } from "./actions";
 import { PageHeader } from "@/components/shared/page-header";
 
-function formatBytes(bytes: number) { return `${Math.max(1, Math.round(bytes / 1024))} KB`; }
+function formatBytes(bytes: number) {
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function formatStatus(status: string) {
+  return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 export default async function ApplicationsPage() {
   const user = await getCurrentUser();
-  if (!user || !hasAnyPermission(user, ["applications.create", "applications.review"])) {
-    return <EmptyState icon={ShieldCheck} eyebrow="Access boundary" title="Applications are not available for this account." description="Ask an administrator to assign an application permission." />;
+  if (user && hasPermission(user, "applications.review")) redirect("/dashboard/application-review");
+  if (!user || !hasPermission(user, "applications.create")) {
+    return (
+      <EmptyState
+        icon={FileText}
+        eyebrow="Learner workspace"
+        title="Applications are available to learners."
+        description="Sign in with a learner account to submit an application and track its progress."
+      />
+    );
   }
-  const canCreate = hasPermission(user, "applications.create");
-  const canReview = hasPermission(user, "applications.review");
-  const [courses, applications, reviewApplications] = await Promise.all([
-    canCreate ? listPublishedCoursesForApplication() : Promise.resolve([]),
-    canCreate ? listLearnerApplications(user.id) : Promise.resolve([]),
-    canReview ? listApplicationsForReview() : Promise.resolve([]),
+
+  const [courses, applications] = await Promise.all([
+    listPublishedCoursesForApplication(),
+    listLearnerApplications(user.id),
   ]);
 
-  return <section className="space-y-6">
-    <PageHeader
-      title="Applications"
-      description="Submit a learning, fellowship, or job application and follow each review decision from the shared platform workspace."
-    />
-    {canCreate ? <Card className="border-t-4 border-t-[#00a3e0]"><div className="flex items-start gap-3"><FileText className="mt-1 size-5 text-[#00a3e0]" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#00a3e0]">New submission</p><h2 className="mt-1 text-xl font-bold text-[#0a1f44]">Start an application</h2></div></div><form action={submitApplication} encType="multipart/form-data" className="mt-5 grid gap-4 lg:grid-cols-2"><label className="grid gap-2"><Label htmlFor="application-type">Application type</Label><select id="application-type" name="type" className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-[#07152d]" defaultValue="TRAINING"><option value="TRAINING">Training</option><option value="FELLOWSHIP">Fellowship</option><option value="JOB">Job</option></select></label><label className="grid gap-2"><Label htmlFor="application-course">Course, if applicable</Label><select id="application-course" name="courseId" className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-[#07152d]" defaultValue=""><option value="">Select a course</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label><label className="grid gap-2 lg:col-span-2"><Label htmlFor="application-cover-letter">Cover letter / statement</Label><Textarea id="application-cover-letter" name="coverLetter" placeholder="Tell the SAN TECH team about your goals, experience, and motivation." required /></label><label className="grid gap-2 lg:col-span-2"><Label htmlFor="application-files">Supporting files</Label><Input id="application-files" name="files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" /><span className="text-xs text-slate-500">Up to five PDF, image, or Word files; 10 MB maximum per file.</span></label><div className="lg:col-span-2"><Button type="submit">Submit application</Button></div></form></Card> : null}
-    {canCreate ? <div><div className="mb-3 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#00a3e0]">Learner view</p><h2 className="mt-1 text-xl font-bold text-[#0a1f44]">My applications</h2></div><span className="text-xs font-bold text-slate-400">{applications.length} record{applications.length === 1 ? "" : "s"}</span></div>{applications.length === 0 ? <EmptyState icon={FileText} title="No applications yet" description="Your submitted applications will appear here with their files and current status." /> : <div className="grid gap-4 lg:grid-cols-2">{applications.map((application) => <Card key={application.id}><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#00a3e0]">{application.type}</p><h3 className="mt-1 font-bold text-[#0a1f44]">{application.course?.title ?? "General application"}</h3></div><span className="rounded-full bg-[#e7f4fb] px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-[#0a1f44]">{application.status.replace("_", " ")}</span></div><p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-500">{application.coverLetter}</p><div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">{application.files.map((file) => <a key={file.id} href={file.secureUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0a1f44] hover:text-[#00a3e0]">{file.name} · {formatBytes(file.bytes)}</a>)}</div></Card>)}</div>}</div> : null}
-    {canReview ? <div><div className="mb-3 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#00a3e0]">Reviewer view</p><h2 className="mt-1 text-xl font-bold text-[#0a1f44]">Application queue</h2></div><span className="text-xs font-bold text-slate-400">{reviewApplications.length} record{reviewApplications.length === 1 ? "" : "s"}</span></div>{reviewApplications.length === 0 ? <EmptyState icon={ClipboardList} title="The review queue is empty" description="New submissions will appear here when learners apply." /> : <div className="space-y-4">{reviewApplications.map((application) => <Card key={application.id}><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#00a3e0]">{application.type} · {application.status.replace("_", " ")}</p><h3 className="mt-1 text-lg font-bold text-[#0a1f44]">{application.applicant.firstName} {application.applicant.lastName}</h3><p className="text-sm text-slate-500">{application.applicant.email}{application.course ? ` · ${application.course.title}` : ""}</p></div><span className="text-xs text-slate-400">{application.updatedAt.toLocaleDateString()}</span></div><p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-600">{application.coverLetter}</p><div className="mt-3 flex flex-wrap gap-2">{application.files.map((file) => <a key={file.id} href={file.secureUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0a1f44] hover:text-[#00a3e0]">{file.name}</a>)}</div><form action={updateApplicationStatus.bind(null, application.id)} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[180px_1fr_auto] sm:items-end"><label className="grid gap-1"><Label htmlFor={`status-${application.id}`}>Decision</Label><select id={`status-${application.id}`} name="status" className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-[#07152d]" defaultValue={application.status === "SUBMITTED" ? "UNDER_REVIEW" : application.status}><option value="UNDER_REVIEW">Under review</option><option value="SHORTLISTED">Shortlisted</option><option value="ACCEPTED">Accepted</option><option value="REJECTED">Rejected</option><option value="WITHDRAWN">Withdrawn</option></select></label><label className="grid gap-1"><Label htmlFor={`notes-${application.id}`}>Review notes</Label><Input id={`notes-${application.id}`} name="reviewNotes" defaultValue={application.reviewNotes ?? ""} placeholder="Optional feedback for the record" /></label><Button type="submit" size="sm">Save decision</Button></form></Card>)}</div>}</div> : null}
-  </section>;
+  return (
+    <section className="mx-auto w-full max-w-6xl space-y-8">
+      <PageHeader
+        title="My applications"
+        description="Submit an application and follow every decision from one learner workspace."
+      />
+
+      <Card className="border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-6 py-5">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-[#123568]">
+              <FileText className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">New application</p>
+              <h2 className="mt-1 text-xl font-bold text-[#0a1f44]">Start an application</h2>
+              <p className="mt-1 text-sm text-slate-500">Choose the opportunity that matches your goals and tell us about your interest.</p>
+            </div>
+          </div>
+        </div>
+
+        <form action={submitApplication} encType="multipart/form-data" className="grid gap-5 p-6 lg:grid-cols-2">
+          <label className="grid gap-2">
+            <Label htmlFor="application-type">Application type</Label>
+            <select id="application-type" name="type" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-[#07152d] outline-none transition focus:border-[#123568] focus:ring-2 focus:ring-[#123568]/15" defaultValue="TRAINING">
+              <option value="TRAINING">Training</option>
+              <option value="FELLOWSHIP">Fellowship</option>
+              <option value="JOB">Job</option>
+            </select>
+          </label>
+
+          <label className="grid gap-2">
+            <Label htmlFor="application-course">Course, if applicable</Label>
+            <select id="application-course" name="courseId" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-[#07152d] outline-none transition focus:border-[#123568] focus:ring-2 focus:ring-[#123568]/15" defaultValue="">
+              <option value="">Select a course</option>
+              {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+            </select>
+          </label>
+
+          <label className="grid gap-2 lg:col-span-2">
+            <Label htmlFor="application-cover-letter">Cover letter or statement</Label>
+            <Textarea id="application-cover-letter" name="coverLetter" className="min-h-36 resize-y" placeholder="Tell us about your goals, experience, and motivation." required />
+          </label>
+
+          <label className="grid gap-2 lg:col-span-2">
+            <Label htmlFor="application-files">Supporting files <span className="font-normal text-slate-400">(optional)</span></Label>
+            <Input id="application-files" name="files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="h-11 cursor-pointer bg-white file:mr-3 file:border-0 file:bg-transparent file:text-sm file:font-medium" />
+            <span className="text-xs text-slate-500">Up to five PDF, image, or Word files; 10 MB maximum per file.</span>
+          </label>
+
+          <div className="flex justify-end lg:col-span-2">
+            <Button type="submit" className="bg-[#123568] px-5 hover:bg-[#0a1f44]">Submit application</Button>
+          </div>
+        </form>
+      </Card>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Your history</p>
+            <h2 className="mt-1 text-xl font-bold text-[#0a1f44]">Submitted applications</h2>
+          </div>
+          <span className="text-sm text-slate-500">{applications.length} {applications.length === 1 ? "application" : "applications"}</span>
+        </div>
+
+        {applications.length === 0 ? (
+          <EmptyState icon={FileText} title="No applications yet" description="Your submitted applications and supporting files will appear here." />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {applications.map((application) => (
+              <Card key={application.id} className="border-slate-200 bg-white shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{application.type}</p>
+                    <h3 className="mt-1 font-bold text-[#0a1f44]">{application.course?.title ?? "General application"}</h3>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{formatStatus(application.status)}</span>
+                </div>
+                <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{application.coverLetter}</p>
+                {application.files.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                    {application.files.map((file) => (
+                      <a key={file.id} href={file.secureUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
+                        <Paperclip className="size-3.5" />{file.name} · {formatBytes(file.bytes)}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+    </section>
+  );
 }
+
+
+

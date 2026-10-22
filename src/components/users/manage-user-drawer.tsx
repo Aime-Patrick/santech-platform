@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   UserRound,
   ShieldCheck,
@@ -90,10 +91,12 @@ const STATUS_OPTIONS: Array<{
 
 export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const [status, setStatus] = useState(user.status);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(
     user.roles.map((r) => r.role.id)
   );
+  const initialRoleIds = React.useMemo(() => user.roles.map((r) => r.role.id).sort(), [user.roles]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -114,6 +117,8 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
     );
   };
 
+  const hasChanges = status !== user.status || JSON.stringify([...selectedRoleIds].sort()) !== JSON.stringify(initialRoleIds);
+
   const handleSave = () => {
     setError(null);
     setSuccess(false);
@@ -126,6 +131,7 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
       try {
         await updateUserAccess(user.id, formData);
         setSuccess(true);
+        router.refresh();
         setTimeout(() => {
           setOpen(false);
         }, 600);
@@ -323,8 +329,8 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={isPending}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white min-w-28"
+            disabled={isPending || !hasChanges}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white min-w-28 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? (
               <>
@@ -340,3 +346,8 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
     </Drawer>
   );
 }
+
+
+
+
+
