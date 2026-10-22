@@ -1,0 +1,23 @@
+CREATE TABLE "ExternalIdentity" (
+    "id" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "ExternalIdentity_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "SsoExchange" (
+    "id" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "usedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "SsoExchange_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "ExternalIdentity_provider_subject_key" ON "ExternalIdentity"("provider", "subject");
+CREATE INDEX "ExternalIdentity_userId_idx" ON "ExternalIdentity"("userId");
+CREATE INDEX "SsoExchange_provider_expiresAt_idx" ON "SsoExchange"("provider", "expiresAt");
+ALTER TABLE "ExternalIdentity" ADD CONSTRAINT "ExternalIdentity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

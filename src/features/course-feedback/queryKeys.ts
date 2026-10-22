@@ -1,0 +1,1 @@
+﻿export const feedbackKeys = { all: ["course-feedback"] as const, reviews: (courseId: string) => ["course-feedback", courseId, "reviews"] as const, comments: (courseId: string) => ["course-feedback", courseId, "comments"] as const };

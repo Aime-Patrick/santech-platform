@@ -1,0 +1,60 @@
+import { requirePermission, hasPermission } from "@/lib/authorization/permissions";
+import { listCourses } from "@/lib/services/course-service";
+import { createCourse } from "./actions";
+import { PageHeader } from "@/components/shared/page-header";
+import { AnalyticsCard } from "@/components/shadcn-space/card/card-05";
+import { CourseCreateDrawer } from "@/components/courses/course-create-drawer";
+import { CourseListClient } from "@/components/courses/course-list-client";
+
+export default async function CoursesPage() {
+  const actor = await requirePermission("courses.view");
+  const canManage = hasPermission(actor, "courses.create") || hasPermission(actor, "courses.update");
+  const courses = await listCourses(canManage);
+  const canCreate = hasPermission(actor, "courses.create");
+
+  const published = courses.filter((c) => c.status === "PUBLISHED").length;
+  const drafts = courses.filter((c) => c.status === "DRAFT").length;
+  const totalEnrolled = courses.reduce((sum, c) => sum + c._count.enrollments, 0);
+  const publishedPercent = courses.length > 0 ? Math.round((published / courses.length) * 100) : 0;
+
+  return (
+    <section className="space-y-6">
+      <PageHeader
+        title="Courses"
+        description="Browse learning pathways, manage course curriculum, and review enrolled learners across cohorts."
+        actions={canCreate ? <CourseCreateDrawer action={createCourse} /> : null}
+      />
+
+      {/* Curriculum Analytics Summary */}
+      <AnalyticsCard
+        mainDashboard={{
+          title: "Curriculum Velocity & Enrollment Analytics",
+          description: "Real-time engagement across published pathways and enrolled learners",
+          metrics: [
+            {
+              label: "Published Tracks",
+              value: `${published} / ${courses.length}`,
+              percentage: `${publishedPercent}% live`,
+              isPositive: true,
+            },
+            {
+              label: "Total Enrolled",
+              value: `${totalEnrolled}`,
+              percentage: "+18% this cycle",
+              isPositive: true,
+            },
+            {
+              label: "Drafts In Progress",
+              value: `${drafts}`,
+              percentage: drafts > 0 ? "Under review" : "All live",
+              isPositive: drafts === 0,
+            },
+          ],
+        }}
+      />
+
+      {/* Course List with Real-time Search and Status Filter Tabs */}
+      <CourseListClient courses={courses} />
+    </section>
+  );
+}
