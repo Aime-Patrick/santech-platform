@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { createCohort } from "@/app/(dashboard)/dashboard/courses/actions";
+export async function POST(request: Request,{params}:{params:Promise<{courseId:string}>}){const {courseId}=await params;const body=await request.json();const form=new FormData();Object.entries(body).forEach(([k,v])=>form.set(k,String(v??"")));try{await createCohort(courseId,form);return NextResponse.json({ok:true});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Unable to create cohort."},{status:400});}}

@@ -1,3 +1,4 @@
+import { UserAccessForm } from "@/components/users/user-access-form";
 import { Save, ShieldCheck, UserRound } from "lucide-react";
 import { updateUserAccess } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ export function UsersTable({ users, roles, canManage }: { users: UserRecord[]; r
       </div>
       <div className="divide-y divide-slate-100">
         {users.map((user) => (
-          <form key={user.id} action={canManage ? updateUserAccess.bind(null, user.id) : undefined} className="grid gap-4 px-5 py-5 md:grid-cols-[minmax(220px,1.4fr)_minmax(160px,1fr)_minmax(190px,1fr)_minmax(170px,auto)_auto] md:items-center">
+          <UserAccessForm key={user.id} userId={user.id} status={user.status} roleIds={user.roles.map(({ role }) => role.id)} canManage={canManage}>
             <div className="flex items-start gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e7f4fb] text-[#0a1f44]"><UserRound className="size-4" /></span>
               <div className="min-w-0">
@@ -55,9 +56,7 @@ export function UsersTable({ users, roles, canManage }: { users: UserRecord[]; r
                   </details>
                 );
               })()}
-            </div>
-            {canManage ? <Button type="submit" size="sm" variant="outline"><Save className="mr-1.5 size-3.5" />Save</Button> : <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500"><ShieldCheck className="size-4" />View only</span>}
-          </form>
+            </div>{!canManage ? <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500"><ShieldCheck className="size-4" />View only</span> : null}</UserAccessForm>
         ))}
       </div>
     </div>

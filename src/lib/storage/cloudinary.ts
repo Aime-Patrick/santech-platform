@@ -38,3 +38,17 @@ export async function uploadBufferToCloudinary({ data, fileName, mimeType, folde
   if (!response.ok) throw new Error(`CLOUDINARY_UPLOAD_FAILED:${response.status}:${(await response.text()).slice(0, 240)}`);
   return (await response.json()) as CloudinaryUploadResult;
 }
+
+export async function destroyCloudinaryAsset(publicId: string, resourceType = "image") {
+  const env = cloudinaryConfig();
+  if (!env) return;
+  const type = resourceType === "video" ? "video" : resourceType === "raw" ? "raw" : "image";
+  const timestamp = Math.floor(Date.now() / 1000);
+  const formData = new FormData();
+  formData.append("public_id", publicId);
+  formData.append("api_key", env.apiKey);
+  formData.append("timestamp", String(timestamp));
+  formData.append("signature", signature({ public_id: publicId, timestamp }, env.apiSecret));
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${env.cloudName}/${type}/destroy`, { method: "POST", body: formData });
+  if (!response.ok) throw new Error(`CLOUDINARY_DESTROY_FAILED:${response.status}:${(await response.text()).slice(0, 240)}`);
+}

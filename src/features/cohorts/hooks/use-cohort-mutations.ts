@@ -1,0 +1,5 @@
+"use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+async function post(url:string,input:Record<string,unknown>){const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});const body=await response.json().catch(()=>null);if(!response.ok)throw new Error(body?.error??"Unable to save cohort data.");return body;}
+export function useMarkAttendance(cohortId:string){const c=useQueryClient();return useMutation({mutationFn:(input:Record<string,unknown>)=>post(`/api/admin/cohorts/${cohortId}/attendance`,input),onSuccess:()=>c.invalidateQueries({queryKey:["cohort",cohortId]})});}
+export function useSaveGrade(cohortId:string){const c=useQueryClient();return useMutation({mutationFn:(input:Record<string,unknown>)=>post(`/api/admin/cohorts/${cohortId}/grades`,input),onSuccess:()=>c.invalidateQueries({queryKey:["cohort",cohortId]})});}

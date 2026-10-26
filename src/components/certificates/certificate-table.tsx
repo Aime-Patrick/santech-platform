@@ -26,12 +26,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { CertificateDetailsSheet, type CertificateRecord } from "./certificate-details-sheet";
 import { RevokeCertificateDialog } from "./revoke-certificate-dialog";
 
-type RevokeAction = (certificateId: string, formData: FormData) => void | Promise<void>;
-
 interface CertificateTableProps {
   certificates: CertificateRecord[];
   canRevoke: boolean;
-  revokeAction: RevokeAction;
   title?: string;
   description?: string;
 }
@@ -39,7 +36,6 @@ interface CertificateTableProps {
 export function CertificateTable({
   certificates,
   canRevoke,
-  revokeAction,
   title = "Certificate Register",
   description = "Official record of verified completion credentials issued across all tracks.",
 }: CertificateTableProps) {
@@ -274,7 +270,6 @@ export function CertificateTable({
                             certificateId={cert.id}
                             certificateNo={cert.certificateNo}
                             learnerName={`${cert.learner.firstName} ${cert.learner.lastName}`}
-                            action={revokeAction.bind(null, cert.id)}
                             trigger={
                               <Button
                                 variant="ghost"

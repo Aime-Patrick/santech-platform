@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { FileText, Paperclip } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/authorization/permissions";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { submitApplication } from "./actions";
+import { ApplicationSubmitForm } from "@/components/applications/application-submit-form";
 import { PageHeader } from "@/components/shared/page-header";
 
 function formatBytes(bytes: number) {
@@ -60,39 +60,7 @@ export default async function ApplicationsPage() {
           </div>
         </div>
 
-        <form action={submitApplication} encType="multipart/form-data" className="grid gap-5 p-6 lg:grid-cols-2">
-          <label className="grid gap-2">
-            <Label htmlFor="application-type">Application type</Label>
-            <select id="application-type" name="type" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-[#07152d] outline-none transition focus:border-[#123568] focus:ring-2 focus:ring-[#123568]/15" defaultValue="TRAINING">
-              <option value="TRAINING">Training</option>
-              <option value="FELLOWSHIP">Fellowship</option>
-              <option value="JOB">Job</option>
-            </select>
-          </label>
-
-          <label className="grid gap-2">
-            <Label htmlFor="application-course">Course, if applicable</Label>
-            <select id="application-course" name="courseId" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-[#07152d] outline-none transition focus:border-[#123568] focus:ring-2 focus:ring-[#123568]/15" defaultValue="">
-              <option value="">Select a course</option>
-              {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 lg:col-span-2">
-            <Label htmlFor="application-cover-letter">Cover letter or statement</Label>
-            <Textarea id="application-cover-letter" name="coverLetter" className="min-h-36 resize-y" placeholder="Tell us about your goals, experience, and motivation." required />
-          </label>
-
-          <label className="grid gap-2 lg:col-span-2">
-            <Label htmlFor="application-files">Supporting files <span className="font-normal text-slate-400">(optional)</span></Label>
-            <Input id="application-files" name="files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="h-11 cursor-pointer bg-white file:mr-3 file:border-0 file:bg-transparent file:text-sm file:font-medium" />
-            <span className="text-xs text-slate-500">Up to five PDF, image, or Word files; 10 MB maximum per file.</span>
-          </label>
-
-          <div className="flex justify-end lg:col-span-2">
-            <Button type="submit" className="bg-[#123568] px-5 hover:bg-[#0a1f44]">Submit application</Button>
-          </div>
-        </form>
+        <ApplicationSubmitForm courses={courses} />
       </Card>
 
       <section className="space-y-3">

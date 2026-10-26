@@ -34,6 +34,8 @@ const permissions = [
   ["certificates.issue", "Issue certificates", "Certificates"],
   ["certificates.revoke", "Revoke certificates", "Certificates"],
   ["notifications.manage", "Manage notifications", "Notifications"],
+  ["appointments.view", "View appointment schedules", "Appointments"],
+  ["appointments.manage", "Manage appointment schedules", "Appointments"],
   ["audit_logs.view", "View audit logs", "Audit"],
 ];
 

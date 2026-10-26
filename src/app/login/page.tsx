@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useEnrollInCourse, useLogin } from "@/features/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,32 +15,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const loginMutation = useLogin();
+  const enrollmentMutation = useEnrollInCourse();
+  const error = loginMutation.error?.message ?? enrollmentMutation.error?.message;
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
-      });
-      if (!response.ok) throw new Error("Invalid credentials");
-      const course = new URLSearchParams(window.location.search).get("course");
-      if (course) {
-        const enrollmentResponse = await fetch("/api/courses/enroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ course }) });
-        if (!enrollmentResponse.ok && enrollmentResponse.status !== 409) throw new Error("Your account is signed in, but the enrollment could not be completed.");
-      }
-      router.replace(course ? "/dashboard/enrollments" : "/dashboard");
-    } catch {
-      setError("The email or password is not correct.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const course = new URLSearchParams(window.location.search).get("course");
+    loginMutation.mutate({ email, password, rememberMe }, {
+      onSuccess: () => {
+        if (course) {
+          enrollmentMutation.mutate(course, {
+            onSuccess: () => router.replace("/dashboard/enrollments"),
+            onError: () => undefined,
+          });
+        } else {
+          router.replace("/dashboard");
+        }
+      },
+    });
+  }
 
   return (
     <main className="min-h-screen bg-[#f4f5f9] px-4 py-7 sm:px-6 sm:py-10">
@@ -70,7 +65,7 @@ export default function LoginPage() {
               Remember me
             </label>
             {error ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-            <Button type="submit" disabled={loading} className="h-10 w-full rounded-md bg-[#4a45ff] text-sm hover:bg-[#3934db]">{loading ? "Logging in…" : "Login"}</Button>
+            <Button type="submit" disabled={loginMutation.isPending || enrollmentMutation.isPending} className="h-10 w-full rounded-md bg-[#4a45ff] text-sm hover:bg-[#3934db]">{loginMutation.isPending || enrollmentMutation.isPending ? "Logging in..." : "Login"}</Button>
           </form>
         </section>
       </div>

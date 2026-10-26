@@ -60,8 +60,8 @@ export function KpiSummary({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-none",
-        className
+        "flex flex-wrap items-center justify-between gap-6 rounde-md border border-gray-200/80 bg-white p-5 shadow-none",
+        className,
       )}
     >
       {/* 1. Trained Donut Gauge */}
@@ -84,17 +84,25 @@ export function KpiSummary({
         </div>
       </div>
 
-      <div className="hidden h-10 w-px bg-slate-100 md:block" aria-hidden="true" />
+      <div
+        className="hidden h-10 w-px bg-slate-100 md:block"
+        aria-hidden="true"
+      />
 
       {/* 2. Overview Capsule */}
       <div className="flex items-center gap-2.5 rounded-xl border border-gray-100 bg-slate-50/70 px-3.5 py-2">
         <div className="flex size-7 items-center justify-center rounded-lg bg-white border border-gray-200/60 shadow-2xs">
           <Calendar className="size-3.5 text-slate-500" />
         </div>
-        <span className="text-[12px] font-semibold text-slate-700">{overviewLabel}</span>
+        <span className="text-[12px] font-semibold text-slate-700">
+          {overviewLabel}
+        </span>
       </div>
 
-      <div className="hidden h-10 w-px bg-slate-100 lg:block" aria-hidden="true" />
+      <div
+        className="hidden h-10 w-px bg-slate-100 lg:block"
+        aria-hidden="true"
+      />
 
       {/* 3. Stat Metrics */}
       <div className="flex flex-1 flex-wrap items-center justify-around gap-6">
@@ -107,14 +115,16 @@ export function KpiSummary({
               <span
                 className={cn(
                   "inline-flex items-center text-[11px] font-bold",
-                  item.changeColor || "text-emerald-500"
+                  item.changeColor || "text-emerald-500",
                 )}
               >
                 <TrendingUp className="mr-0.5 size-3 inline" />
                 {item.change}
               </span>
             </div>
-            <p className="mt-1 text-[12px] font-medium text-slate-400">{item.label}</p>
+            <p className="mt-1 text-[12px] font-medium text-slate-400">
+              {item.label}
+            </p>
           </div>
         ))}
       </div>

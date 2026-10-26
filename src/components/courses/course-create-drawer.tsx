@@ -18,30 +18,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { slugify } from "@/lib/slugify";
+import { useCreateCourse } from "@/features/courses";
 
-type CreateCourseAction = (formData: FormData) => void | Promise<void>;
+
 
 interface CourseCreateDrawerProps {
-  action: CreateCourseAction;
+
   trigger?: React.ReactNode;
 }
 
-export function CourseCreateDrawer({ action, trigger }: CourseCreateDrawerProps) {
+export function CourseCreateDrawer({ trigger }: CourseCreateDrawerProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const mutation = useCreateCourse();
 
   const slug = slugify(title);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    setIsSubmitting(true);
-    // Server action will redirect on success, or if error, re-enable button
-    try {
-      // Normal form submission will invoke action
-    } catch {
-      setIsSubmitting(false);
-    }
-  };
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); mutation.mutate(new FormData(e.currentTarget), { onSuccess: () => setOpen(false) }); };
 
   return (
     <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
@@ -82,7 +75,7 @@ export function CourseCreateDrawer({ action, trigger }: CourseCreateDrawerProps)
           </div>
         </DrawerHeader>
 
-        <form action={action} onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto">
           <div className="flex-1 space-y-4 p-6">
             <div className="space-y-1.5">
               <Label htmlFor="create-course-title">Course Title</Label>
@@ -163,13 +156,13 @@ export function CourseCreateDrawer({ action, trigger }: CourseCreateDrawerProps)
             <div className="flex items-center justify-end gap-2">
               <DrawerClose
                 render={
-                  <Button variant="outline" type="button" disabled={isSubmitting}>
+                  <Button variant="outline" type="button" disabled={mutation.isPending}>
                     Cancel
                   </Button>
                 }
               />
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Draft Course"}
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? "Creating..." : "Create Draft Course"}
               </Button>
             </div>
           </DrawerFooter>

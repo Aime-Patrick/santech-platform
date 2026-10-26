@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -6,6 +6,7 @@ import { ArrowLeft, MoreHorizontal, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AssetPicker } from "@/components/website-content/asset-picker";
+import { useDeleteWebsiteEntry, useUpdateWebsiteEntry, useWebsiteEntry } from "@/features/website-content";
 
 type Entry = { id: string; contentType: string; sourceDocumentId: string; title: string | null; slug: string | null; status: string; payload: Record<string, unknown>; sourceUpdatedAt: string | null };
 const hidden = new Set(["id", "documentId", "createdAt", "updatedAt", "publishedAt", "bookId", "pageLabel", "readerUrl"]);
@@ -15,49 +16,49 @@ const requiredFields = new Set(["label", "description", "title", "year", "stage"
 export function WebsiteContentEditor({ id }: { id: string }) {
   const router = useRouter();
   const search = useSearchParams();
+  const entryQuery = useWebsiteEntry(id);
+  const updateMutation = useUpdateWebsiteEntry();
+  const deleteMutation = useDeleteWebsiteEntry();
   const [entry, setEntry] = React.useState<Entry | null>(null);
   const [payload, setPayload] = React.useState<Record<string, unknown>>({});
   const [title, setTitle] = React.useState("");
   const [slug, setSlug] = React.useState("");
   const [original, setOriginal] = React.useState({ title: "", slug: "", payload: "" });
   const [status, setStatus] = React.useState("DRAFT");
-  const [saving, setSaving] = React.useState(false);
+
   const [menu, setMenu] = React.useState(false);
   const [topMenu, setTopMenu] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<"DRAFT" | "PUBLISHED">("DRAFT");
 
   React.useEffect(() => {
-    fetch(`/api/admin/website-content?id=${encodeURIComponent(id)}`).then((response) => response.json()).then((result) => {
-      const nextEntry = result.data?.[0] as Entry | undefined;
-      if (!nextEntry) return;
-      const nextTitle = nextEntry.title ?? String(nextEntry.payload?.label ?? nextEntry.payload?.stage ?? nextEntry.payload?.year ?? nextEntry.payload?.title ?? "Untitled entry");
-      setEntry(nextEntry); setPayload(nextEntry.payload ?? {}); setTitle(nextTitle); setSlug(nextEntry.slug ?? ""); setStatus(nextEntry.status ?? "DRAFT");
-      setOriginal({ title: nextTitle, slug: nextEntry.slug ?? "", payload: JSON.stringify(nextEntry.payload ?? {}) });
-    });
-  }, [id]);
+    const nextEntry = entryQuery.data?.data?.[0] as Entry | undefined;
+    if (!nextEntry) return;
+    const nextTitle = nextEntry.title ?? String(nextEntry.payload?.label ?? nextEntry.payload?.stage ?? nextEntry.payload?.year ?? nextEntry.payload?.title ?? "Untitled entry");
+    setEntry(nextEntry as Entry); setPayload(nextEntry.payload ?? {}); setTitle(nextTitle); setSlug(nextEntry.slug ?? ""); setStatus(nextEntry.status ?? "DRAFT");
+    setOriginal({ title: nextTitle, slug: nextEntry.slug ?? "", payload: JSON.stringify(nextEntry.payload ?? {}) });
+  }, [entryQuery.data]);
 
   const dirty = title !== original.title || slug !== original.slug || JSON.stringify(payload) !== original.payload;
   const readOnly = viewMode === "PUBLISHED";
-  const disabled = readOnly || saving || !dirty;
+  const disabled = readOnly || updateMutation.isPending || deleteMutation.isPending || !dirty;
 
-  async function save(nextStatus: string) {
+  function save(nextStatus: string) {
     if (!entry) return;
     const generatedPayload = { ...payload };
-    Object.keys(generatedPayload).filter((key) => /(image|logo|media|photo|thumbnail|video)/i.test(key)).forEach((key) => { if (generatedPayload[key] && !/video/i.test(key)) generatedPayload[`${key}Alt`] = title.trim() || fieldLabel(key); });
-    setSaving(true);
-    const response = await fetch("/api/admin/website-content", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entry.id, title: title.trim() || "Untitled entry", slug, payload: generatedPayload, status: nextStatus }) });
-    setSaving(false);
-    if (!response.ok) { const result = await response.json(); window.alert(result.error ?? "Unable to save entry"); return; }
-    const result = await response.json(); setEntry(result.data); setPayload(generatedPayload); setStatus(result.data.status); setOriginal({ title: title.trim() || "Untitled entry", slug, payload: JSON.stringify(generatedPayload) });
+    Object.keys(generatedPayload).filter((key) => /(image|logo|media|photo|thumbnail|video)/i.test(key)).forEach((key) => { if (generatedPayload[key] && !/video/i.test(key)) generatedPayload[key + "Alt"] = title.trim() || fieldLabel(key); });
+    updateMutation.mutate(
+      { id: entry.id, title: title.trim() || "Untitled entry", slug, payload: generatedPayload, status: nextStatus },
+      { onSuccess: (result) => { setEntry(result.data as Entry); setPayload(generatedPayload); setStatus(result.data.status); setOriginal({ title: title.trim() || "Untitled entry", slug, payload: JSON.stringify(generatedPayload) }); } },
+    );
   }
 
-  async function remove() {
+  function remove() {
     if (!entry || !window.confirm("Delete this entry?")) return;
-    const response = await fetch(`/api/admin/website-content?id=${entry.id}`, { method: "DELETE" });
-    if (response.ok) router.back();
+    deleteMutation.mutate(entry.id, { onSuccess: () => router.back() });
   }
 
-  if (!entry) return <div className="p-8 text-slate-500">Loading entry...</div>;
+  if (entryQuery.isLoading) return <div className="p-8 text-slate-500">Loading entry...</div>
+  if (!entry) return <div className="p-8 text-slate-500">{entryQuery.error?.message ?? "Entry not found."}</div>;
 
   const fields = Object.entries(payload).filter(([key, value]) => !hidden.has(key) && !/(alt)$/i.test(key) && (["string", "number", "boolean"].includes(typeof value) || /(image|logo|media|photo|thumbnail)/i.test(key)));
   const mediaUrl = (key: string) => { const value = payload[key]; return typeof value === "string" ? value : value && typeof value === "object" && "url" in value ? String((value as { url?: unknown }).url ?? "") : ""; };

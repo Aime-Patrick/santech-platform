@@ -1,0 +1,5 @@
+"use client";
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { useUpdateUserAccess } from "@/features/users";
+export function UserAccessForm({userId,status,roleIds,canManage,children}:{userId:string;status:string;roleIds:string[];canManage:boolean;children:React.ReactNode}){const mutation=useUpdateUserAccess();const ref=React.useRef<HTMLFormElement>(null);function submit(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);mutation.mutate({userId,status:String(data.get("status")),roleIds:data.getAll("roleIds").map(String)})}return <form ref={ref} onSubmit={submit} className="grid gap-4 px-5 py-5 md:grid-cols-[minmax(220px,1.4fr)_minmax(160px,1fr)_minmax(190px,1fr)_minmax(170px,auto)_auto] md:items-center">{children}{canManage?<Button type="submit" size="sm" variant="outline" disabled={mutation.isPending}>{mutation.isPending?"Saving...":"Save"}</Button>:null}</form>}

@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { createCourse } from "@/app/(dashboard)/dashboard/courses/actions";
+export async function POST(request: Request) { try { await createCourse(await request.formData()); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to create course." }, { status: 400 }); } }

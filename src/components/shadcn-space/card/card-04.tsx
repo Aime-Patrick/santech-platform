@@ -25,7 +25,7 @@ function AnimatedCounter({
 }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) =>
-    Math.round(latest).toLocaleString()
+    Math.round(latest).toLocaleString(),
   );
 
   useEffect(() => {
@@ -76,7 +76,7 @@ const WelcomeCard = ({
 
   return (
     <div ref={ref} className={cn("w-full", className)}>
-      <Card className="p-6 sm:p-7 bg-gradient-to-r from-[#4338ca] via-[#4a45ff] to-[#3b82f6] pb-0 w-full relative overflow-hidden rounded-2xl shadow-sm border-0 text-white">
+      <Card className="p-6 sm:p-7 bg-gradient-to-r from-[#4338ca] via-[#4a45ff] to-[#3b82f6] pb-0 w-full relative overflow-hidden rounde-md shadow-sm border-0 text-white">
         <div className="grid grid-cols-12 items-center">
           {/* LEFT SIDE */}
           <div className="md:col-span-8 col-span-12">

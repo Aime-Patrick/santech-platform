@@ -1,0 +1,5 @@
+"use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+async function send(url: string, input: Record<string, unknown>) { const response = await fetch(url, { method: url.endsWith("roles") ? "POST" : "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); const body = await response.json().catch(() => null); if (!response.ok) throw new Error(body?.error ?? "Unable to save role."); return body; }
+export function useCreateRole() { const client = useQueryClient(); return useMutation({ mutationFn: (input: Record<string, unknown>) => send("/api/admin/roles", input), onSuccess: () => client.invalidateQueries({ queryKey: ["roles"] }) }); }
+export function useUpdateRole() { const client = useQueryClient(); return useMutation({ mutationFn: ({ id, ...input }: Record<string, unknown> & { id: string }) => send(`/api/admin/roles/${id}`, input), onSuccess: () => { client.invalidateQueries({ queryKey: ["roles"] }); client.invalidateQueries({ queryKey: ["users"] }); } }); }

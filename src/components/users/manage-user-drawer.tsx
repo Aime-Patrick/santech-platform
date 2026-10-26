@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserRound,
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, getStatusVariant } from "@/components/shared/status-badge";
-import { updateUserAccess } from "@/app/(dashboard)/dashboard/users/actions";
+import { useUpdateUserAccess } from "@/features/users";
 
 export type ManageUserRecord = {
   id: string;
@@ -99,7 +99,7 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
   const initialRoleIds = React.useMemo(() => user.roles.map((r) => r.role.id).sort(), [user.roles]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const updateMutation = useUpdateUserAccess();
 
   // Reset local state when opened
   React.useEffect(() => {
@@ -122,22 +122,9 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
   const handleSave = () => {
     setError(null);
     setSuccess(false);
-
-    const formData = new FormData();
-    formData.set("status", status);
-    selectedRoleIds.forEach((id) => formData.append("roleIds", id));
-
-    startTransition(async () => {
-      try {
-        await updateUserAccess(user.id, formData);
-        setSuccess(true);
-        router.refresh();
-        setTimeout(() => {
-          setOpen(false);
-        }, 600);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to update user access.");
-      }
+    updateMutation.mutate({ userId: user.id, status, roleIds: selectedRoleIds }, {
+      onSuccess: () => { setSuccess(true); setTimeout(() => setOpen(false), 600); },
+      onError: (err) => setError(err instanceof Error ? err.message : 'Failed to update user access.'),
     });
   };
 
@@ -321,7 +308,7 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
         <DrawerFooter className="border-t border-slate-100 p-6 flex flex-row items-center justify-end gap-3">
           <DrawerClose
             render={
-              <Button variant="outline" size="sm" disabled={isPending}>
+              <Button variant="outline" size="sm" disabled={updateMutation.isPending}>
                 Cancel
               </Button>
             }
@@ -329,10 +316,10 @@ export function ManageUserDrawer({ user, roles, trigger }: ManageUserDrawerProps
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={isPending || !hasChanges}
+            disabled={updateMutation.isPending || !hasChanges}
             className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white min-w-28 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isPending ? (
+            {updateMutation.isPending ? (
               <>
                 <Loader2 className="size-3.5 animate-spin" />
                 Saving...

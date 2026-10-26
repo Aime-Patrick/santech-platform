@@ -1,0 +1,5 @@
+"use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+async function post(url: string, body: Record<string, unknown>) { const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const result = await response.json().catch(() => null); if (!response.ok) throw new Error(result?.error ?? "Unable to update certificate."); return result; }
+export function useIssueCertificate() { const client = useQueryClient(); return useMutation({ mutationFn: (enrollmentId: string) => post("/api/admin/certificates/issue", { enrollmentId }), onSuccess: () => client.invalidateQueries({ queryKey: ["certificates"] }) }); }
+export function useRevokeCertificate() { const client = useQueryClient(); return useMutation({ mutationFn: ({ certificateId, reason }: { certificateId: string; reason: string }) => post(`/api/admin/certificates/${certificateId}/revoke`, { reason }), onSuccess: () => client.invalidateQueries({ queryKey: ["certificates"] }) }); }

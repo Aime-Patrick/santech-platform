@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { markAttendance } from "@/app/(dashboard)/dashboard/cohorts/actions";
+export async function POST(request: Request, { params }: { params: Promise<{ cohortId: string }> }) { const { cohortId } = await params; const body = await request.json().catch(() => null); const form = new FormData(); Object.entries(body ?? {}).forEach(([key, value]) => form.set(key, String(value ?? ""))); try { await markAttendance(cohortId, String(body?.learnerId), form); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to save attendance." }, { status: 400 }); } }

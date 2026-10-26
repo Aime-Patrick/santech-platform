@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIssueCertificate } from "@/features/certificates";
 
 export type EligibleEnrollment = {
   id: string;
@@ -22,31 +23,12 @@ export type EligibleEnrollment = {
   course: { title: string };
 };
 
-type IssueAction = (enrollmentId: string) => void | Promise<void>;
-
-interface EligibleCompletionsTableProps {
-  eligible: EligibleEnrollment[];
-  issueAction: IssueAction;
-}
-
-export function EligibleCompletionsTable({
-  eligible,
-  issueAction,
-}: EligibleCompletionsTableProps) {
-  const [issuingId, setIssuingId] = useState<string | null>(null);
+export function EligibleCompletionsTable({ eligible }: { eligible: EligibleEnrollment[] }) {
+  const mutation = useIssueCertificate();
 
   if (eligible.length === 0) {
     return null;
   }
-
-  const handleIssue = async (enrollmentId: string) => {
-    setIssuingId(enrollmentId);
-    try {
-      await issueAction(enrollmentId);
-    } finally {
-      setIssuingId(null);
-    }
-  };
 
   return (
     <Card className="overflow-hidden">
@@ -84,7 +66,7 @@ export function EligibleCompletionsTable({
                   })
                 : "Recently";
 
-              const isPending = issuingId === item.id;
+              const isPending = mutation.isPending;
 
               return (
                 <TableRow key={item.id} className="transition-colors hover:bg-muted/40">
@@ -105,17 +87,13 @@ export function EligibleCompletionsTable({
                     {completedDate}
                   </TableCell>
                   <TableCell className="text-right">
-                    <form
-                      action={async () => {
-                        await handleIssue(item.id);
-                      }}
-                    >
+                    <form onSubmit={(event) => { event.preventDefault(); mutation.mutate(item.id); }}>
+
                       <Button
                         type="submit"
                         size="sm"
                         disabled={isPending}
-                        className="h-7 text-xs"
-                      >
+                        className="h-7 text-xs">
                         {isPending ? "Issuing..." : "Issue Certificate"}
                       </Button>
                     </form>

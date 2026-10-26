@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-} from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProgressRing } from "./progress-ring";
@@ -60,9 +55,19 @@ export function LearnersTable({
         accessorKey: "name",
         cell: (item) => (
           <div className="flex items-center gap-3">
-            <Avatar size="sm" className={cn("size-8 text-[11px] font-bold text-white", item.avatarBg)}>
-              {item.avatarUrl && <AvatarImage src={item.avatarUrl} alt={item.name} />}
-              <AvatarFallback className={cn("text-[11px] font-bold", item.avatarBg)}>
+            <Avatar
+              size="sm"
+              className={cn(
+                "size-8 text-[11px] font-bold text-white",
+                item.avatarBg,
+              )}
+            >
+              {item.avatarUrl && (
+                <AvatarImage src={item.avatarUrl} alt={item.name} />
+              )}
+              <AvatarFallback
+                className={cn("text-[11px] font-bold", item.avatarBg)}
+              >
                 {item.avatarInitials}
               </AvatarFallback>
             </Avatar>
@@ -103,7 +108,9 @@ export function LearnersTable({
           return (
             <div className="flex items-center gap-2">
               <span className={cn("size-2 rounded-full", dotColor)} />
-              <span className={cn("text-[12px]", textColor)}>{item.status}</span>
+              <span className={cn("text-[12px]", textColor)}>
+                {item.status}
+              </span>
             </div>
           );
         },
@@ -130,10 +137,10 @@ export function LearnersTable({
             item.progress === 100
               ? "#00c5a3"
               : item.progress > 50
-              ? "#00c5a3"
-              : item.progress > 0
-              ? "#06b6d4"
-              : "#cbd5e1";
+                ? "#00c5a3"
+                : item.progress > 0
+                  ? "#06b6d4"
+                  : "#cbd5e1";
 
           return (
             <div className="flex items-center gap-2.5">
@@ -158,7 +165,10 @@ export function LearnersTable({
           <div className="flex items-center gap-2">
             <Avatar size="sm" className="size-6 bg-slate-200">
               {item.assignedBy.avatarUrl && (
-                <AvatarImage src={item.assignedBy.avatarUrl} alt={item.assignedBy.name} />
+                <AvatarImage
+                  src={item.assignedBy.avatarUrl}
+                  alt={item.assignedBy.name}
+                />
               )}
               <AvatarFallback className="text-[10px] font-bold text-slate-600 bg-slate-200">
                 {item.assignedBy.initials}
@@ -185,11 +195,11 @@ export function LearnersTable({
         cell: () => null,
       },
     ],
-    []
+    [],
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-none">
+    <div className="overflow-hidden rounde-md border border-gray-200/80 bg-white shadow-none">
       {/* Table Card Top Content Bar */}
       <div className="flex flex-wrap items-center justify-between border-b border-gray-100 px-5 py-3.5">
         <div className="flex items-center gap-2.5">

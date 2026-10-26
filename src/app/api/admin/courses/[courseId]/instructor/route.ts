@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { assignInstructorToCourse } from "@/app/(dashboard)/dashboard/courses/actions";
+export async function POST(request: Request, { params }: { params: Promise<{ courseId: string }> }) { const { courseId } = await params; const body = await request.json(); const form = new FormData(); form.set("instructorId", String(body.instructorId ?? "")); try { await assignInstructorToCourse(courseId, form); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to assign instructor." }, { status: 400 }); } }

@@ -4,7 +4,6 @@ import { hasPermission } from "@/lib/authorization/permissions";
 import { listCertificates, listEligibleEnrollmentsForCertificate } from "@/lib/services/certificate-service";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
-import { issueCertificate, revokeCertificate } from "./actions";
 import { CertificateTable } from "@/components/certificates/certificate-table";
 import { EligibleCompletionsTable } from "@/components/certificates/eligible-completions-table";
 
@@ -37,14 +36,13 @@ export default async function CertificatesPage() {
 
       {/* Eligible completions awaiting issuance */}
       {canIssue && eligible.length > 0 && (
-        <EligibleCompletionsTable eligible={eligible} issueAction={issueCertificate} />
+        <EligibleCompletionsTable eligible={eligible} />
       )}
 
       {/* Main Certificate Register Table */}
       <CertificateTable
         certificates={certificates}
         canRevoke={canRevoke}
-        revokeAction={revokeCertificate}
         title={canIssue ? "All Certificates" : "My Certificates"}
         description={
           canIssue

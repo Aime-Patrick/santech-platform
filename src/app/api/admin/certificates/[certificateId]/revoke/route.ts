@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { revokeCertificate } from "@/app/(dashboard)/dashboard/certificates/actions";
+export async function POST(request: Request, { params }: { params: Promise<{ certificateId: string }> }) { const { certificateId } = await params; const body = await request.json().catch(() => null); const form = new FormData(); form.set("reason", String(body?.reason ?? "")); try { await revokeCertificate(certificateId, form); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to revoke certificate." }, { status: 400 }); } }

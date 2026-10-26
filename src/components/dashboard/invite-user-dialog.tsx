@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Mail, UserPlus, X, Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSendInvitation } from "@/features/invitations";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,21 +25,21 @@ export function InviteUserDialog({ roles }: { roles: RoleOption[] }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [error, setError] = useState("");
+
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  const sendInvitationMutation = useSendInvitation();
 
   function resetForm() {
     setEmail("");
     setFirstName("");
     setLastName("");
     setRoleIds([]);
-    setError("");
+    sendInvitationMutation.reset();
     setSuccess("");
   }
 
   function handleOpenChange(newOpen: boolean) {
-    if (loading) return;
+    if (sendInvitationMutation.isPending) return;
     setOpen(newOpen);
     if (!newOpen) {
       resetForm();
@@ -53,36 +54,15 @@ export function InviteUserDialog({ roles }: { roles: RoleOption[] }) {
     );
   }
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
     setSuccess("");
-    setLoading(true);
-
-    try {
-      const response = await fetch("/api/admin/invitations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, lastName, roleIds }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(body.error || "The invitation could not be sent.");
-      }
-      setSuccess("Invitation sent! The user will receive an onboarding link.");
-      setTimeout(() => {
-        setOpen(false);
-        resetForm();
-      }, 1200);
-    } catch (submissionError) {
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "The invitation could not be sent."
-      );
-    } finally {
-      setLoading(false);
-    }
+    sendInvitationMutation.mutate({ email, firstName, lastName, roleIds }, {
+      onSuccess: () => {
+        setSuccess("Invitation sent! The user will receive an onboarding link.");
+        window.setTimeout(() => { setOpen(false); resetForm(); }, 1200);
+      },
+    });
   }
 
   return (
@@ -125,12 +105,12 @@ export function InviteUserDialog({ roles }: { roles: RoleOption[] }) {
 
         <form onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
-            {error && (
+            {sendInvitationMutation.error && (
               <p
                 role="alert"
                 className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700"
               >
-                {error}
+                {sendInvitationMutation.error.message}
               </p>
             )}
             {success && (
@@ -236,7 +216,7 @@ export function InviteUserDialog({ roles }: { roles: RoleOption[] }) {
           <DrawerFooter className="border-t border-slate-100 p-6 flex flex-row items-center justify-end gap-3">
             <DrawerClose
               render={
-                <Button type="button" variant="outline" size="sm" disabled={loading}>
+                <Button type="button" variant="outline" size="sm" disabled={sendInvitationMutation.isPending}>
                   Cancel
                 </Button>
               }
@@ -244,10 +224,10 @@ export function InviteUserDialog({ roles }: { roles: RoleOption[] }) {
             <Button
               type="submit"
               size="sm"
-              disabled={loading || roleIds.length === 0}
+              disabled={sendInvitationMutation.isPending || roleIds.length === 0}
               className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white min-w-28 font-semibold"
             >
-              {loading ? (
+              {sendInvitationMutation.isPending ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
                   Sending...

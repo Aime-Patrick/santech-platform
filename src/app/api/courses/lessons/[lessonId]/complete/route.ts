@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { markLessonComplete } from "@/app/(dashboard)/dashboard/courses/actions";
+export async function POST(_: Request, { params }: { params: Promise<{ lessonId: string }> }) { const { lessonId } = await params; try { await markLessonComplete(lessonId); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to complete lesson." }, { status: 400 }); } }

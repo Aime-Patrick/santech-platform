@@ -7,27 +7,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRegister } from "@/features/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const registerMutation = useRegister();
 
   function update(field: keyof typeof form, value: string) { setForm((current) => ({ ...current, [field]: value })); }
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     if (form.password !== form.confirmPassword) { setError("Passwords do not match."); return; }
-    setLoading(true);
-    try {
-      const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ firstName: form.firstName, lastName: form.lastName, email: form.email, password: form.password, course: typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("course") ?? undefined : undefined }) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || "Unable to create your account.");
-      router.replace(new URLSearchParams(window.location.search).has("course") ? "/dashboard/enrollments" : "/dashboard");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to create your account."); }
-    finally { setLoading(false); }
+    const course = new URLSearchParams(window.location.search).get("course") ?? undefined;
+    registerMutation.mutate(
+      { firstName: form.firstName, lastName: form.lastName, email: form.email, password: form.password, course },
+      { onSuccess: () => router.replace(course ? "/dashboard/enrollments" : "/dashboard"), onError: (caught) => setError(caught.message) },
+    );
   }
 
   return (
@@ -41,7 +39,7 @@ export default function RegisterPage() {
             <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" value={form.password} onChange={(event) => update("password", event.target.value)} required minLength={8} autoComplete="new-password" /><p className="text-xs text-[#5c6287]">At least 8 characters.</p></div>
             <div className="space-y-2"><Label htmlFor="confirmPassword">Confirm password</Label><Input id="confirmPassword" type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} required minLength={8} autoComplete="new-password" /></div>
             {error ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-            <Button type="submit" disabled={loading} className="h-11 w-full rounded-md bg-[#4a45ff] text-sm hover:bg-[#3934db]">{loading ? "Creating account…" : "Create learner account"}</Button>
+            <Button type="submit" disabled={registerMutation.isPending} className="h-11 w-full rounded-md bg-[#4a45ff] text-sm hover:bg-[#3934db]">{registerMutation.isPending ? "Creating account..." : "Create learner account"}</Button>
           </form>
           <p className="mt-6 text-center text-sm text-[#5c6287]">Already have an account? <Link href="/login" className="font-semibold text-[#4a45ff] hover:underline">Log in</Link></p>
         </section>

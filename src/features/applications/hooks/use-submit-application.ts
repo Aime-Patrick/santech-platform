@@ -1,0 +1,3 @@
+"use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+export function useSubmitApplication() { const client = useQueryClient(); return useMutation({ mutationFn: async (form: FormData) => { const response = await fetch("/api/applications", { method: "POST", body: form }); const body = await response.json().catch(() => null); if (!response.ok) throw new Error(body?.error ?? "Unable to submit application."); return body; }, onSuccess: () => client.invalidateQueries({ queryKey: ["applications"] }) }); }

@@ -39,6 +39,17 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum AppointmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AppointmentBookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
 enum EnrollmentStatus {
   PENDING
   APPROVED
@@ -231,25 +242,25 @@ model Session {
 }
 
 model Course {
-  id               String             @id @default(cuid())
+  id               String                 @id @default(cuid())
   sourceId         String?
   sourceDocumentId String?
-  slug             String             @unique
+  slug             String                 @unique
   title            String
   summary          String?
   description      String?
   level            String?
   durationWeeks    Int?
-  status           CourseStatus       @default(DRAFT)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  status           CourseStatus           @default(DRAFT)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
   lessons          Lesson[]
   cohorts          Cohort[]
   instructors      CourseInstructor[]
   enrollments      Enrollment[]
   applications     Application[]
   certificates     Certificate[]
-  catalogItem      CatalogItem?       @relation("CatalogCourse")
+  catalogItem      CatalogItem?           @relation("CatalogCourse")
   materials        CourseMaterial[]
   reviews          CourseReview[]
   comments         CourseComment[]
@@ -264,6 +275,7 @@ model MediaAsset {
   publicId         String        @unique
   url              String
   alternativeText  String?
+  caption          String?
   format           String?
   width            Int?
   height           Int?
@@ -331,11 +343,11 @@ model CourseTool {
 }
 
 model CatalogItem {
-  id                 String             @id @default(cuid())
+  id                 String                 @id @default(cuid())
   sourceId           String?
   sourceDocumentId   String?
   title              String
-  slug               String             @unique
+  slug               String                 @unique
   category           String
   description        String?
   provider           String?
@@ -348,24 +360,24 @@ model CatalogItem {
   durationMin        Int?
   durationMax        Int?
   durationUnit       String?
-  rating             Decimal?           @db.Decimal(3, 2)
+  rating             Decimal?               @db.Decimal(3, 2)
   reviewCountLabel   String?
-  sortOrder          Int                @default(0)
-  status             CourseStatus       @default(DRAFT)
+  sortOrder          Int                    @default(0)
+  status             CourseStatus           @default(DRAFT)
   publishedAt        DateTime?
   imageAssetId       String?
   categoryId         String?
-  courseId           String?            @unique
+  courseId           String?                @unique
   stats              Json?
   learningOutcomes   Json?
   details            Json?
   courseSeries       Json?
   courseTestimonials Json?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  imageAsset         MediaAsset?        @relation("CatalogImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
-  courseCategory     CourseCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  course             Course?            @relation("CatalogCourse", fields: [courseId], references: [id], onDelete: SetNull)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  imageAsset         MediaAsset?            @relation("CatalogImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
+  courseCategory     CourseCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  course             Course?                @relation("CatalogCourse", fields: [courseId], references: [id], onDelete: SetNull)
   skills             CatalogItemSkill[]
   tools              CatalogItemTool[]
   programCourses     CatalogProgramCourse[] @relation("ProgramCourses")
@@ -375,18 +387,19 @@ model CatalogItem {
 }
 
 model CatalogProgramCourse {
-  programId  String
-  courseId   String
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  program    CatalogItem @relation("ProgramCourses", fields: [programId], references: [id], onDelete: Cascade)
-  course     Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  programId String
+  courseId  String
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  program   CatalogItem @relation("ProgramCourses", fields: [programId], references: [id], onDelete: Cascade)
+  course    Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@id([programId, courseId])
   @@index([programId, sortOrder])
   @@index([courseId])
 }
+
 model CatalogItemSkill {
   catalogItemId String
   skillId       String
@@ -431,9 +444,8 @@ model Lesson {
   @@index([courseId, status])
 }
 
-
 model CourseMaterial {
-  id          String              @id @default(cuid())
+  id          String             @id @default(cuid())
   courseId    String
   lessonId    String?
   title       String
@@ -443,13 +455,13 @@ model CourseMaterial {
   publicId    String?
   mimeType    String?
   durationSec Int?
-  sortOrder   Int                 @default(0)
-  isPublished Boolean             @default(false)
+  sortOrder   Int                @default(0)
+  isPublished Boolean            @default(false)
   metadata    Json?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  course      Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson      Lesson?             @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson      Lesson?            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@index([courseId, sortOrder])
   @@index([lessonId, sortOrder])
@@ -457,35 +469,36 @@ model CourseMaterial {
 }
 
 model CourseReview {
-  id         String       @id @default(cuid())
-  courseId   String
-  learnerId  String
-  rating     Int
-  title      String?
-  body       String
-  status     ReviewStatus @default(PENDING)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  learner    User         @relation("CourseReviews", fields: [learnerId], references: [id], onDelete: Cascade)
+  id        String       @id @default(cuid())
+  courseId  String
+  learnerId String
+  rating    Int
+  title     String?
+  body      String
+  status    ReviewStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learner   User         @relation("CourseReviews", fields: [learnerId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, learnerId])
   @@index([courseId, status])
 }
 
 model CourseComment {
-  id         String       @id @default(cuid())
-  courseId   String
-  learnerId  String
-  body       String
-  status     ReviewStatus @default(PENDING)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  learner    User         @relation("CourseComments", fields: [learnerId], references: [id], onDelete: Cascade)
+  id        String       @id @default(cuid())
+  courseId  String
+  learnerId String
+  body      String
+  status    ReviewStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learner   User         @relation("CourseComments", fields: [learnerId], references: [id], onDelete: Cascade)
 
   @@index([courseId, status, createdAt])
 }
+
 model CourseInstructor {
   courseId     String
   instructorId String
@@ -717,3 +730,52 @@ model AuditLog {
 }
 
 
+
+model AppointmentType {
+  id              String             @id @default(cuid())
+  slug            String             @unique
+  title           String
+  description     String?
+  durationMinutes Int                @default(30)
+  timezone        String             @default("Africa/Kigali")
+  locationLabel   String?
+  locationUrl     String?
+  status          AppointmentStatus  @default(DRAFT)
+  hostId          String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  publishedAt     DateTime?
+  availability    AppointmentAvailability[]
+  bookings        AppointmentBooking[]
+  @@index([hostId, status])
+}
+
+model AppointmentAvailability {
+  id                String          @id @default(cuid())
+  appointmentTypeId String
+  weekday           Int
+  startMinute       Int
+  endMinute         Int
+  appointmentType   AppointmentType @relation(fields: [appointmentTypeId], references: [id], onDelete: Cascade)
+  @@unique([appointmentTypeId, weekday, startMinute, endMinute])
+  @@index([appointmentTypeId, weekday])
+}
+
+model AppointmentBooking {
+  id                String                    @id @default(cuid())
+  appointmentTypeId String
+  attendeeId        String?
+  attendeeName      String
+  attendeeEmail     String
+  startsAt          DateTime
+  endsAt            DateTime
+  timezone          String
+  notes             String?
+  status            AppointmentBookingStatus @default(CONFIRMED)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  appointmentType   AppointmentType           @relation(fields: [appointmentTypeId], references: [id], onDelete: Cascade)
+  @@unique([appointmentTypeId, startsAt])
+  @@index([attendeeEmail, startsAt])
+  @@index([appointmentTypeId, startsAt, status])
+}

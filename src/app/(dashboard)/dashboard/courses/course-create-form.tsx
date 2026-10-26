@@ -6,15 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { slugify } from "@/lib/slugify";
+import { useCreateCourse } from "@/features/courses";
 
 type CreateCourseAction = (formData: FormData) => void | Promise<void>;
 
-export function CourseCreateForm({ action }: { action: CreateCourseAction }) {
+export function CourseCreateForm() {
+  const mutation = useCreateCourse();
   const [title, setTitle] = useState("");
   const slug = slugify(title);
 
   return (
-    <form action={action} className="grid gap-4 border-t border-slate-100 p-5 md:grid-cols-2">
+    <form onSubmit={(event) => { event.preventDefault(); mutation.mutate(new FormData(event.currentTarget)); }} className="grid gap-4 border-t border-slate-100 p-5 md:grid-cols-2">
       <label className="grid gap-2">
         <Label htmlFor="course-title">Title</Label>
         <Input id="course-title" name="title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Full-Stack Software Engineering" required />
@@ -41,7 +43,7 @@ export function CourseCreateForm({ action }: { action: CreateCourseAction }) {
         <Textarea id="course-description" name="description" placeholder="Explain what learners will build and how the pathway works." />
       </label>
       <div className="flex justify-end md:col-span-2">
-        <Button type="submit">Create draft course</Button>
+        <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Creating..." : "Create draft course"}</Button>
       </div>
     </form>
   );

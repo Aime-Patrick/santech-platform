@@ -1,4 +1,6 @@
-﻿import Link from "next/link";
+import { CourseMutationForm } from "@/components/courses/course-mutation-form";
+import Link from "next/link";
+import { LessonCompleteButton } from "@/components/courses/lesson-complete-button";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -18,15 +20,6 @@ import {
   getCourseEnrollments,
 } from "@/lib/services/learning-service";
 import { listInstructors } from "@/lib/services/instructor-service";
-import {
-  addLesson,
-  applyForEnrollment,
-  assignInstructorToCourse,
-  assignLearnerToCohort,
-  createCohort,
-  markLessonComplete,
-  updateCourseStatus,
-} from "../actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -120,23 +113,23 @@ export default async function CourseDetailPage({
           {canManage && (
             <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-0">
               {course.status !== "PUBLISHED" && (
-                <form action={updateCourseStatus.bind(null, course.id)}>
+                <CourseMutationForm kind="status" courseId={course.id}>
                   <input type="hidden" name="status" value="PUBLISHED" />
                   <Button type="submit" size="sm">
                     Publish
                   </Button>
-                </form>
+                </CourseMutationForm>
               )}
               {course.status !== "DRAFT" && (
-                <form action={updateCourseStatus.bind(null, course.id)}>
+                <CourseMutationForm kind="status" courseId={course.id}>
                   <input type="hidden" name="status" value="DRAFT" />
                   <Button type="submit" size="sm" variant="outline">
                     Move to draft
                   </Button>
-                </form>
+                </CourseMutationForm>
               )}
               {course.status !== "ARCHIVED" && (
-                <form action={updateCourseStatus.bind(null, course.id)}>
+                <CourseMutationForm kind="status" courseId={course.id}>
                   <input type="hidden" name="status" value="ARCHIVED" />
                   <Button
                     type="submit"
@@ -146,7 +139,7 @@ export default async function CourseDetailPage({
                   >
                     Archive
                   </Button>
-                </form>
+                </CourseMutationForm>
               )}
             </div>
           )}
@@ -241,11 +234,7 @@ export default async function CourseDetailPage({
                               Complete
                             </Badge>
                           ) : (
-                            <form action={markLessonComplete.bind(null, lesson.id)} className="self-center">
-                              <Button type="submit" size="sm" variant="outline">
-                                Mark complete
-                              </Button>
-                            </form>
+                            <div className="self-center"><LessonCompleteButton lessonId={lesson.id} /></div>
                           )
                         ) : null}
                       </div>
@@ -270,9 +259,7 @@ export default async function CourseDetailPage({
 
               <CardContent className="space-y-6 pt-4">
                 {/* Create cohort form */}
-                <form
-                  action={createCohort.bind(null, course.id)}
-                  className="grid gap-3 sm:grid-cols-[1.5fr_1fr_1fr_auto] sm:items-end rounded-lg border border-border bg-muted/20 p-4"
+                <CourseMutationForm kind="cohort" courseId={course.id} className="grid gap-3 sm:grid-cols-[1.5fr_1fr_1fr_auto] sm:items-end rounded-lg border border-border bg-muted/20 p-4"
                 >
                   <div className="space-y-1.5">
                     <Label htmlFor="cohort-name">Cohort Name</Label>
@@ -289,13 +276,11 @@ export default async function CourseDetailPage({
                   <Button type="submit" size="sm" className="h-9">
                     Create
                   </Button>
-                </form>
+                </CourseMutationForm>
 
                 {/* Assign instructor */}
                 {canManage && instructors.length > 0 && (
-                  <form
-                    action={assignInstructorToCourse.bind(null, course.id)}
-                    className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-muted/20 p-4"
+                  <CourseMutationForm kind="instructor" courseId={course.id} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-muted/20 p-4"
                   >
                     <div className="min-w-64 flex-1 space-y-1.5">
                       <Label htmlFor="course-instructor">Assign Instructor</Label>
@@ -310,7 +295,7 @@ export default async function CourseDetailPage({
                         </option>
                         {instructors.map((instructor) => (
                           <option key={instructor.id} value={instructor.id}>
-                            {instructor.firstName} {instructor.lastName} Â· {instructor.email}
+                            {instructor.firstName} {instructor.lastName} {String.fromCharCode(183)} {instructor.email}
                           </option>
                         ))}
                       </select>
@@ -318,7 +303,7 @@ export default async function CourseDetailPage({
                     <Button type="submit" size="sm" variant="outline" className="h-9">
                       Assign instructor
                     </Button>
-                  </form>
+                  </CourseMutationForm>
                 )}
 
                 {/* Cohorts grid */}
@@ -345,7 +330,7 @@ export default async function CourseDetailPage({
                                 <h4 className="font-semibold text-foreground">{cohort.name}</h4>
                                 <p className="mt-0.5 text-xs text-muted-foreground">
                                   {cohort.members.length} member{cohort.members.length === 1 ? "" : "s"}
-                                  {cohort.startsAt ? ` Â· Starts ${cohort.startsAt.toLocaleDateString()}` : ""}
+                                  {cohort.startsAt ? `${String.fromCharCode(183)} Starts ${cohort.startsAt.toLocaleDateString()}` : ""}
                                 </p>
                               </div>
                               <Badge variant="outline" className="text-xs">
@@ -359,7 +344,7 @@ export default async function CourseDetailPage({
                               ) : (
                                 cohort.members.map(({ learner }) => (
                                   <p key={learner.id} className="text-xs text-muted-foreground">
-                                    â€¢ {learner.firstName} {learner.lastName}
+                                    {String.fromCharCode(8226)} {learner.firstName} {learner.lastName}
                                   </p>
                                 ))
                               )}
@@ -367,7 +352,7 @@ export default async function CourseDetailPage({
                           </div>
 
                           {availableLearners.length > 0 && (
-                            <form action={assignLearnerToCohort.bind(null, cohort.id)} className="flex gap-2 pt-2 border-t border-border">
+                            <CourseMutationForm kind="learner" courseId={course.id} cohortId={cohort.id} className="flex gap-2 pt-2 border-t border-border">
                               <select
                                 name="learnerId"
                                 className="min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -385,7 +370,7 @@ export default async function CourseDetailPage({
                               <Button type="submit" size="sm" variant="outline" className="h-8 text-xs">
                                 Assign
                               </Button>
-                            </form>
+                            </CourseMutationForm>
                           )}
                         </div>
                       );
@@ -447,7 +432,7 @@ export default async function CourseDetailPage({
                   </p>
                 </div>
               ) : canApply ? (
-                <form action={applyForEnrollment.bind(null, course.id)} className="space-y-4">
+                <CourseMutationForm kind="enroll" courseId={course.id} className="space-y-4">
                   <div>
                     <h4 className="text-sm font-semibold text-foreground">Ready to begin?</h4>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -457,7 +442,7 @@ export default async function CourseDetailPage({
                   <Button type="submit" className="w-full">
                     Apply for enrollment
                   </Button>
-                </form>
+                </CourseMutationForm>
               ) : (
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   Your account has preview access to this curriculum.
@@ -477,7 +462,7 @@ export default async function CourseDetailPage({
               <Separator />
 
               <CardContent className="pt-4">
-                <form action={addLesson.bind(null, course.id)} className="space-y-4">
+                <CourseMutationForm kind="lesson" courseId={course.id} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="lesson-title">Lesson Title</Label>
                     <Input
@@ -499,7 +484,7 @@ export default async function CourseDetailPage({
                   <Button type="submit" className="w-full">
                     Add lesson
                   </Button>
-                </form>
+                </CourseMutationForm>
               </CardContent>
             </Card>
           )}

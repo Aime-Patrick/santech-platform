@@ -1,0 +1,10 @@
+export type AppointmentSlot = { startsAt: string; endsAt: string; date: string; time: string };
+export type PublicAppointment = { id: string; slug: string; title: string; description: string | null; durationMinutes: number; timezone: string; locationLabel: string | null; locationUrl: string | null; availability: Array<{ weekday: number; startMinute: number; endMinute: number }> };
+async function request<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> { const response = await fetch(input, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } }); const payload = await response.json().catch(() => null); if (!response.ok) throw new Error(payload?.error ?? "Request failed"); return payload; }
+export const getPublicAppointment = (slug: string) => request<{ data: PublicAppointment }>(`/api/public/appointments/${encodeURIComponent(slug)}`);
+export const getAppointmentSlots = (slug: string, from: string) => request<{ data: { appointment: PublicAppointment; timezone: string; slots: AppointmentSlot[] } }>(`/api/public/appointments/${encodeURIComponent(slug)}/slots?from=${encodeURIComponent(from)}&days=7`);
+export const createPublicBooking = (slug: string, body: { startsAt: string; attendeeName: string; attendeeEmail: string; timezone: string; notes?: string }) => request(`/api/public/appointments/${encodeURIComponent(slug)}/bookings`, { method: "POST", body: JSON.stringify(body) });
+
+export type AdminAppointment = { id: string; slug: string; title: string; status: string; durationMinutes: number; timezone: string; availability: Array<{ weekday: number; startMinute: number; endMinute: number }>; _count: { bookings: number } };
+export const getAdminAppointments = () => request<{ data: AdminAppointment[] }>("/api/admin/appointments");
+export const createAdminAppointment = (body: { title: string; slug: string; description?: string; durationMinutes: number; timezone: string; availability: Array<{ weekday: number; startMinute: number; endMinute: number }> }) => request<{ data: AdminAppointment }>("/api/admin/appointments", { method: "POST", body: JSON.stringify(body) });

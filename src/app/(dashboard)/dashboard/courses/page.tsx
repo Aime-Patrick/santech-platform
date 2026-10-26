@@ -1,6 +1,6 @@
 import { requirePermission, hasPermission } from "@/lib/authorization/permissions";
 import { listCourses } from "@/lib/services/course-service";
-import { createCourse } from "./actions";
+
 import { PageHeader } from "@/components/shared/page-header";
 import { AnalyticsCard } from "@/components/shadcn-space/card/card-05";
 import { CourseCreateDrawer } from "@/components/courses/course-create-drawer";
@@ -22,7 +22,7 @@ export default async function CoursesPage() {
       <PageHeader
         title="Courses"
         description="Manage published courses, curriculum, and enrolled learners across cohorts."
-        actions={canCreate ? <CourseCreateDrawer action={createCourse} /> : null}
+        actions={canCreate ? <CourseCreateDrawer /> : null}
       />
 
       {/* Curriculum Analytics Summary */}

@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { updateCourseStatus } from "@/app/(dashboard)/dashboard/courses/actions";
+export async function PATCH(request: Request, { params }: { params: Promise<{ courseId: string }> }) { const { courseId } = await params; const body = await request.json(); const form = new FormData(); form.set("status", String(body.status ?? "")); try { await updateCourseStatus(courseId, form); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update course status." }, { status: 400 }); } }

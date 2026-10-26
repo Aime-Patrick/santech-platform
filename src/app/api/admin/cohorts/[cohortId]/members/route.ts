@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { assignLearnerToCohort } from "@/app/(dashboard)/dashboard/courses/actions";
+export async function POST(request: Request, { params }: { params: Promise<{ cohortId: string }> }) { const { cohortId } = await params; const body = await request.json(); const form = new FormData(); form.set("learnerId", String(body.learnerId ?? "")); try { await assignLearnerToCohort(cohortId, form); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to assign learner." }, { status: 400 }); } }

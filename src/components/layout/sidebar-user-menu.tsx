@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
+import { useLogout } from "@/features/auth";
 
 export function SidebarUserMenu({ userName, roles }: { userName: string; roles: string[] }) {
   const router = useRouter();
@@ -23,11 +24,8 @@ export function SidebarUserMenu({ userName, roles }: { userName: string; roles: 
     .map((name) => name[0]?.toUpperCase())
     .join("");
 
-  const onLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
-  };
+  const logoutMutation = useLogout();
+  const onLogout = () => logoutMutation.mutate(undefined, { onSuccess: () => { router.replace("/login"); router.refresh(); } });
 
   return (
     <DropdownMenu>

@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { submitApplication } from "@/app/(dashboard)/dashboard/applications/actions";
+export async function POST(request: Request) { try { await submitApplication(await request.formData()); return NextResponse.json({ ok: true }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to submit application." }, { status: 400 }); } }

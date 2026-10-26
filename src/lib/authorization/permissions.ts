@@ -25,6 +25,8 @@ export const PERMISSIONS = {
   certificatesIssue: "certificates.issue",
   certificatesRevoke: "certificates.revoke",
   notificationsManage: "notifications.manage",
+  appointmentsView: "appointments.view",
+  appointmentsManage: "appointments.manage",
   auditLogsView: "audit_logs.view",
 } as const;
 
