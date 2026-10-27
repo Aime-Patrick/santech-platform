@@ -17,6 +17,9 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 
+type LearnerEnrollment = Awaited<ReturnType<typeof getLearnerDashboard>>[number];
+type ActiveRole = { role: { isActive: boolean; key: string } };
+
 function formatDate(value: Date | null) {
   if (!value) return null;
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(value);
@@ -32,7 +35,7 @@ export default async function EnrollmentsPage() {
   const actor = await getCurrentUser();
   if (!actor) redirect("/login");
 
-  const activeRoleKeys = actor.roles.filter(({ role }) => role.isActive).map(({ role }) => role.key);
+  const activeRoleKeys = actor.roles.filter((entry: ActiveRole) => entry.role.isActive).map((entry: ActiveRole) => entry.role.key);
   const isLearner = activeRoleKeys.includes("learner");
   if (!isLearner || !hasPermission(actor, "enrollments.apply")) {
     return (
@@ -48,12 +51,12 @@ export default async function EnrollmentsPage() {
   }
 
   const enrollments = await getLearnerDashboard(actor.id);
-  const totalCompleted = enrollments.reduce((sum, item) => sum + item.completedLessonCount, 0);
-  const totalLessons = enrollments.reduce((sum, item) => sum + item.lessonCount, 0);
-  const activeCount = enrollments.filter((item) => item.status === "APPROVED" || item.status === "ACTIVE").length;
-  const completedCount = enrollments.filter((item) => item.lessonCount > 0 && item.completedLessonCount >= item.lessonCount).length;
-  const attendance = enrollments.reduce((sum, item) => sum + item.attendanceCount, 0);
-  const attendancePresent = enrollments.reduce((sum, item) => sum + item.presentAttendanceCount, 0);
+  const totalCompleted = enrollments.reduce((sum: number, item: LearnerEnrollment) => sum + item.completedLessonCount, 0);
+  const totalLessons = enrollments.reduce((sum: number, item: LearnerEnrollment) => sum + item.lessonCount, 0);
+  const activeCount = enrollments.filter((item: LearnerEnrollment) => item.status === "APPROVED" || item.status === "ACTIVE").length;
+  const completedCount = enrollments.filter((item: LearnerEnrollment) => item.lessonCount > 0 && item.completedLessonCount >= item.lessonCount).length;
+  const attendance = enrollments.reduce((sum: number, item: LearnerEnrollment) => sum + item.attendanceCount, 0);
+  const attendancePresent = enrollments.reduce((sum: number, item: LearnerEnrollment) => sum + item.presentAttendanceCount, 0);
   const stats = [
     { label: "Enrolled courses", value: enrollments.length, icon: BookOpen, tone: "bg-indigo-50 text-indigo-600" },
     { label: "In progress", value: activeCount, icon: Clock3, tone: "bg-sky-50 text-sky-600" },
@@ -66,7 +69,7 @@ export default async function EnrollmentsPage() {
       <PageHeader title="My enrollments" description="Your learning journey, course progress, and cohort activity in one place." />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, tone }) => (
+        {stats.map(({ label, value, icon: Icon, tone }: (typeof stats)[number]) => (
           <Card key={label} className="border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <span className={`grid size-9 place-items-center rounded-xl ${tone}`}><Icon className="size-4" /></span>
@@ -90,7 +93,7 @@ export default async function EnrollmentsPage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {enrollments.map((item) => {
+            {enrollments.map((item: LearnerEnrollment) => {
               const progress = item.lessonCount ? Math.min(100, Math.round((item.completedLessonCount / item.lessonCount) * 100)) : 0;
               const startDate = formatDate(item.cohort?.startsAt ?? null);
               const endDate = formatDate(item.cohort?.endsAt ?? null);
