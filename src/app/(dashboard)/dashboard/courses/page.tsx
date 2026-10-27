@@ -6,15 +6,18 @@ import { AnalyticsCard } from "@/components/shadcn-space/card/card-05";
 import { CourseCreateDrawer } from "@/components/courses/course-create-drawer";
 import { CourseListClient } from "@/components/courses/course-list-client";
 
+
+type CourseSummary = Awaited<ReturnType<typeof listCourses>>[number];
+
 export default async function CoursesPage() {
   const actor = await requirePermission("courses.view");
   const canManage = hasPermission(actor, "courses.create") || hasPermission(actor, "courses.update");
   const courses = await listCourses(canManage);
   const canCreate = hasPermission(actor, "courses.create");
 
-  const published = courses.filter((c) => c.status === "PUBLISHED").length;
-  const drafts = courses.filter((c) => c.status === "DRAFT").length;
-  const totalEnrolled = courses.reduce((sum, c) => sum + c._count.enrollments, 0);
+  const published = courses.filter((c: CourseSummary) => c.status === "PUBLISHED").length;
+  const drafts = courses.filter((c: CourseSummary) => c.status === "DRAFT").length;
+  const totalEnrolled = courses.reduce((sum: number, c: CourseSummary) => sum + c._count.enrollments, 0);
   const publishedPercent = courses.length > 0 ? Math.round((published / courses.length) * 100) : 0;
 
   return (
