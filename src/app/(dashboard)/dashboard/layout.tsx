@@ -6,16 +6,19 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getPermissionKeys } from "@/lib/authorization/permissions";
 import { getLearnerDashboard } from "@/lib/services/learning-service";
 
+type DashboardRole = { role: { isActive: boolean; name: string; key: string } };
+type LearnerTrack = Awaited<ReturnType<typeof getLearnerDashboard>>[number];
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const permissions = getPermissionKeys(user);
-  const roles = user.roles.filter(({ role }) => role.isActive).map(({ role }) => role.name);
+  const roles = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => entry.role.name);
   const userName = `${user.firstName} ${user.lastName}`;
-  const activeRoleKeys = user.roles.filter(({ role }) => role.isActive).map(({ role }) => role.key);
+  const activeRoleKeys = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => entry.role.key);
   const isLearner = activeRoleKeys.includes("learner");
-  const learnerTracks = isLearner ? (await getLearnerDashboard(user.id)).filter((item) => !["REJECTED", "WITHDRAWN"].includes(item.status)).map((item) => ({ id: item.course.id, title: item.course.title })) : [];
+  const learnerTracks = isLearner ? (await getLearnerDashboard(user.id)).filter((item: LearnerTrack) => !["REJECTED", "WITHDRAWN"].includes(item.status)).map((item: LearnerTrack) => ({ id: item.course.id, title: item.course.title })) : [];
 
   return (
     <PermissionProvider permissions={permissions} roles={roles}>
