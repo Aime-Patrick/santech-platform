@@ -3,6 +3,14 @@ import { listAuditLogs } from "@/lib/services/admin-service";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 
+type AuditLogRecord = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  createdAt: Date;
+  actor: { firstName: string; lastName: string } | null;
+};
 export default async function AuditLogsPage() {
   await requirePermission("audit_logs.view");
   const logs = await listAuditLogs();
@@ -21,7 +29,7 @@ export default async function AuditLogsPage() {
               No administrative activity has been recorded yet.
             </p>
           ) : (
-            logs.map((log) => (
+            logs.map((log: AuditLogRecord) => (
               <div
                 key={log.id}
                 className="grid gap-2 px-5 py-4 sm:grid-cols-[180px_1fr_auto] sm:items-center"
