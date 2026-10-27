@@ -4,6 +4,13 @@ import { getLearnerAttendance } from "@/lib/services/learning-service";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 
+type AttendanceRecord = {
+  id: string;
+  status: string;
+  sessionDate: Date;
+  cohort: { name: string; course: { title: string } };
+  lesson: { title: string } | null;
+};
 export default async function AttendancePage() {
   const actor = await requirePermission("attendance.view");
   const records = await getLearnerAttendance(actor.id);
@@ -26,7 +33,7 @@ export default async function AttendancePage() {
               </p>
             </div>
           ) : (
-            records.map((record) => {
+            records.map((record: AttendanceRecord) => {
               const present = record.status === "PRESENT";
               const late = record.status === "LATE";
               return (
