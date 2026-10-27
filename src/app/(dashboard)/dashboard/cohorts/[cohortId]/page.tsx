@@ -15,7 +15,7 @@ export default async function CohortDetailPage({ params }: { params: Promise<{ c
   const { cohortId } = await params;
   const actor = await getCurrentUser();
   if (!actor || !hasPermission(actor, "attendance.mark")) notFound();
-  const includeAll = actor.roles.some(({ role }) => role.key === "administrator");
+  const includeAll = actor.roles.some((userRole: { role: { key: string } }) => userRole.role.key === "administrator");
   const cohort = await getInstructorCohort(cohortId, actor.id, includeAll);
   if (!cohort) notFound();
   const grades = await getCohortGrades(cohort.courseId, cohort.members.map(({ learner }) => learner.id));
