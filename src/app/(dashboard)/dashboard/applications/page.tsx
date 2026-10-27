@@ -21,6 +21,7 @@ function formatStatus(status: string) {
 }
 
 type LearnerApplication = Awaited<ReturnType<typeof listLearnerApplications>>[number];
+type ApplicationFile = LearnerApplication["files"][number];
 
 export default async function ApplicationsPage() {
   const user = await getCurrentUser();
@@ -90,7 +91,7 @@ export default async function ApplicationsPage() {
                 <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{application.coverLetter}</p>
                 {application.files.length > 0 ? (
                   <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                    {application.files.map((file) => (
+                    {application.files.map((file: ApplicationFile) => (
                       <a key={file.id} href={file.secureUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
                         <Paperclip className="size-3.5" />{file.name} · {formatBytes(file.bytes)}
                       </a>
