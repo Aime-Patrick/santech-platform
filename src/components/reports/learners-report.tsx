@@ -124,6 +124,13 @@ const initialLearnersData: LearnerReportRow[] = [
   },
 ];
 
+function exportLearnersCsv(rows: LearnerReportRow[]) {
+  const header = ["Learner", "Division", "Role", "Status", "Score", "Progress", "Assigned by"];
+  const lines = rows.map((row) => [row.name, row.division, row.roleTitle, row.status, row.score, row.progress, row.assignedBy.name].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","));
+  const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `learners-report-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
+}
+
 export function LearnersReport() {
   const [activeTab, setActiveTab] = React.useState("Progress");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -132,6 +139,12 @@ export function LearnersReport() {
     { id: "division", label: "Division", value: "2 selected division" },
   ]);
   const [contentIndex, setContentIndex] = React.useState(1);
+  const visibleLearners = initialLearnersData.filter((row) => {
+    const query = searchQuery.trim().toLowerCase();
+    return !query || [row.name, row.division, row.roleTitle, row.status].join(" ").toLowerCase().includes(query);
+  });
+  const averageProgress = visibleLearners.length ? Math.round(visibleLearners.reduce((sum, row) => sum + row.progress, 0) / visibleLearners.length) : 0;
+  const statusCounts = visibleLearners.reduce<Record<string, number>>((acc, row) => { acc[row.status] = (acc[row.status] ?? 0) + 1; return acc; }, {});
 
   const handleRemoveFilter = (filterId: string) => {
     setActiveFilters((prev) => prev.filter((f) => f.id !== filterId));
@@ -148,19 +161,25 @@ export function LearnersReport() {
         title="Learners"
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        peopleCount={100}
+        peopleCount={visibleLearners.length}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         activeFilters={activeFilters}
         onRemoveFilter={handleRemoveFilter}
         onClearFilters={handleClearFilters}
-        onExport={() => alert("Exporting report...")}
+        onExport={() => exportLearnersCsv(visibleLearners)}
       />
 
       {/* 2. KPI Summary Card */}
       <KpiSummary
-        trainedPercent={50}
-        overviewLabel="This week progress overview"
+        trainedPercent={averageProgress}
+        overviewLabel={`${visibleLearners.length} learners · live overview`}
+        metrics={[
+          { value: statusCounts["In progress"] ?? 0, change: `${averageProgress}%`, label: "In progress", changeDirection: "up", changeColor: "text-emerald-500" },
+          { value: statusCounts.Overdue ?? 0, change: "needs review", label: "Overdue", changeColor: "text-rose-500" },
+          { value: statusCounts.Passed ?? 0, change: `${visibleLearners.length ? Math.round(((statusCounts.Passed ?? 0) / visibleLearners.length) * 100) : 0}%`, label: "Passed", changeColor: "text-emerald-500" },
+          { value: statusCounts["Not started"] ?? 0, change: "queued", label: "Not started", changeColor: "text-slate-500" },
+        ]}
       />
 
       {/* 3. Learners Table Card */}
@@ -170,7 +189,7 @@ export function LearnersReport() {
         totalContents={5}
         onPrevContent={() => setContentIndex((i) => Math.max(1, i - 1))}
         onNextContent={() => setContentIndex((i) => Math.min(5, i + 1))}
-        data={initialLearnersData}
+        data={visibleLearners}
         searchQuery={searchQuery}
       />
     </div>

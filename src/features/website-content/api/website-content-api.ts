@@ -38,6 +38,16 @@ export async function uploadAsset(file: File, folder?: string) {
   if (!response.ok) throw new Error(body.error ?? "The asset upload failed.");
   return body;
 }
+export async function replaceAsset(id: string, file: File) {
+  const form = new FormData(); form.append("id", id); form.append("file", file);
+  const response = await fetch("/api/admin/assets", { method: "PUT", body: form });
+  const body = (await response.json().catch(() => ({}))) as { data?: Asset; error?: string };
+  if (!response.ok) throw new Error(body.error ?? "The asset replacement failed.");
+  return body;
+}
+export async function moveAssets(input: { ids: string[]; folder: string }) {
+  return request<{ data: Asset[] }>("/api/admin/assets", { method: "PATCH", body: JSON.stringify({ action: "move", ...input }) });
+}
 export async function updateAsset(input: AssetUpdateInput) {
   return request<{ data: Asset }>("/api/admin/assets", { method: "PATCH", body: JSON.stringify(input) });
 }

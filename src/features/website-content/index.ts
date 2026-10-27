@@ -1,2 +1,2 @@
-export { useAssets, useDeleteAsset, useInfiniteAssets, useCreateWebsiteEntry, useDeleteWebsiteEntry, useUpdateAsset, useUpdateWebsiteEntry, useUploadAsset, useWebsiteEntries, useWebsiteEntry } from "./hooks/use-website-content";
-export type { Asset, AssetUpdateInput, WebsiteEntry, WebsiteEntryInput, WebsiteEntryUpdateInput } from "./types";
+export { useAssets, useDeleteAsset, useInfiniteAssets, useCreateWebsiteEntry, useDeleteWebsiteEntry, useMoveAssets, useReplaceAsset, useUpdateAsset, useUpdateWebsiteEntry, useUploadAsset, useWebsiteEntries, useWebsiteEntry } from "./hooks/use-website-content";
+export type { Asset, AssetMoveInput, AssetUpdateInput, WebsiteEntry, WebsiteEntryInput, WebsiteEntryUpdateInput } from "./types";

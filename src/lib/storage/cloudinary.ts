@@ -3,7 +3,7 @@ import type { Buffer } from "node:buffer";
 import { getServerEnv } from "@/lib/env";
 
 type CloudinaryUploadInput = { data: Buffer; fileName: string; mimeType: string; folder: string };
-type CloudinaryUploadResult = { public_id: string; secure_url: string; resource_type: string; bytes: number };
+type CloudinaryUploadResult = { public_id: string; secure_url: string; resource_type: string; bytes: number; width?: number; height?: number };
 
 function cloudinaryConfig() {
   const env = getServerEnv();
@@ -37,6 +37,20 @@ export async function uploadBufferToCloudinary({ data, fileName, mimeType, folde
   const response = await fetch(`https://api.cloudinary.com/v1_1/${env.cloudName}/auto/upload`, { method: "POST", body: formData });
   if (!response.ok) throw new Error(`CLOUDINARY_UPLOAD_FAILED:${response.status}:${(await response.text()).slice(0, 240)}`);
   return (await response.json()) as CloudinaryUploadResult;
+}
+
+export async function renameCloudinaryAsset(fromPublicId: string, toPublicId: string, resourceType = "image") {
+  const env = cloudinaryConfig();
+  if (!env) return;
+  const type = resourceType === "video" ? "video" : resourceType === "raw" ? "raw" : "image";
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = { from_public_id: fromPublicId, to_public_id: toPublicId, timestamp };
+  const formData = new FormData();
+  formData.append("from_public_id", fromPublicId); formData.append("to_public_id", toPublicId);
+  formData.append("api_key", env.apiKey); formData.append("timestamp", String(timestamp));
+  formData.append("signature", signature(params, env.apiSecret));
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${env.cloudName}/${type}/rename`, { method: "POST", body: formData });
+  if (!response.ok) throw new Error(`CLOUDINARY_RENAME_FAILED:${response.status}`);
 }
 
 export async function destroyCloudinaryAsset(publicId: string, resourceType = "image") {

@@ -9,6 +9,7 @@ import {
   Copy,
   Download,
   FileImage,
+  FileVideo,
   Filter,
   Folder,
   FolderPlus,
@@ -44,13 +45,18 @@ import {
   useDeleteAsset,
   useInfiniteAssets,
   useUpdateAsset,
+  useReplaceAsset,
+  useMoveAssets,
   useUploadAsset,
 } from "@/features/website-content";
 import type { Asset } from "@/features/website-content/types";
 
 function isVideo(asset: Asset) {
   return (
-    asset.format === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(asset.url)
+    asset.format === "video" ||
+    /\.(mp4|webm|mov|m4v)(\?|$)/i.test(asset.url) ||
+    /\/(?:video|raw)\/upload\//i.test(asset.url) ||
+    /\b(?:video|mp4|webm|mov|m4v)\b/i.test(asset.format ?? "")
   );
 }
 
@@ -65,6 +71,11 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
   const [selectedAsset, setSelectedAsset] = React.useState<Asset | null>(null);
   const [sortOpen, setSortOpen] = React.useState(false);
   const [filterOpen, setFilterOpen] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [replaceTarget, setReplaceTarget] = React.useState<string | null>(null);
+  const replaceInputRef = React.useRef<HTMLInputElement>(null);
+  const replaceMutation = useReplaceAsset();
+  const moveMutation = useMoveAssets();
   const [sort, setSort] = React.useState("recent");
   const [typeFilter, setTypeFilter] = React.useState("all");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -132,6 +143,17 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
     assetsQuery.isFetchingNextPage,
     assetsQuery.fetchNextPage,
   ]);
+  const toggleSelected = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const moveSelected = () => {
+    if (!selectedIds.length) return;
+    const destination = window.prompt("Move selected assets to folder", folder || "santech-platform/website-content");
+    if (destination?.trim()) moveMutation.mutate({ ids: selectedIds, folder: destination.trim() }, { onSuccess: () => setSelectedIds([]) });
+  };
+  const onReplace = (file: FileList | null) => {
+    const fileItem = file?.[0];
+    if (!fileItem || !replaceTarget) return;
+    replaceMutation.mutate({ id: replaceTarget, file: fileItem }, { onSettled: () => { setReplaceTarget(null); if (replaceInputRef.current) replaceInputRef.current.value = ""; } });
+  };
   const onUpload = (files: FileList | null) => {
     if (!files?.length) return;
     Array.from(files).forEach((file) =>
@@ -222,6 +244,7 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
         </div>
 
         <div className="mt-7 flex flex-wrap items-center gap-3">
+          {selectedIds.length ? <div className="flex items-center gap-2 rounded-md bg-[#eeedff] px-3 py-1.5 text-sm text-[#3730d8]"><span>{selectedIds.length} selected</span><Button type="button" variant="outline" className="h-7 border-[#c9c6ff] bg-white text-xs" onClick={moveSelected} disabled={moveMutation.isPending}>{moveMutation.isPending ? "Moving…" : "Move to folder"}</Button><button type="button" className="text-xs underline" onClick={() => setSelectedIds([])}>Clear</button></div> : null}
           <div className="relative">
             <Button
               type="button"
@@ -380,6 +403,9 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
                 key={asset.id}
                 asset={asset}
                 onOpen={() => setSelectedAsset(asset)}
+                selected={selectedIds.includes(asset.id)}
+                onToggle={() => toggleSelected(asset.id)}
+                onReplace={() => { setReplaceTarget(asset.id); replaceInputRef.current?.click(); }}
               />
             ))
           ) : (
@@ -387,6 +413,9 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
               assets={visibleAssets}
               folders={folder ? [] : folders}
               onOpen={setSelectedAsset}
+              selectedIds={selectedIds}
+              onToggle={toggleSelected}
+              onReplace={(id) => { setReplaceTarget(id); replaceInputRef.current?.click(); }}
             />
           )}
           {!assetsQuery.isLoading && visibleAssets.length === 0 ? (
@@ -431,7 +460,7 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
   );
 }
 
-function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: () => void }) {
+function AssetCard({ asset, onOpen, selected, onToggle, onReplace }: { asset: Asset; onOpen: () => void; selected: boolean; onToggle: () => void; onReplace: () => void }) {
   const deleteAsset = useDeleteAsset();
   const name = folderName(asset.publicId);
   const copy = () => {
@@ -469,7 +498,7 @@ function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: () => void }) {
         <MediaPreview asset={asset} />
       </div>
       <div className="flex h-14 items-center gap-2 rounded-b-lg border-t border-slate-200 px-3 text-sm">
-        <FileImage className="size-4 shrink-0 text-slate-500" />
+        {isVideo(asset) ? <FileVideo className="size-4 shrink-0 text-slate-500" /> : <FileImage className="size-4 shrink-0 text-slate-500" />}
         <span className="truncate text-[#334a7d]" title={name}>
           {name}
         </span>
@@ -549,10 +578,16 @@ function AssetTable({
   assets,
   folders,
   onOpen,
+  selectedIds,
+  onToggle,
+  onReplace,
 }: {
   assets: Asset[];
   folders: string[];
   onOpen: (asset: Asset) => void;
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  onReplace: (id: string) => void;
 }) {
   const copy = (value: string) => {
     if (typeof navigator !== "undefined") navigator.clipboard?.writeText(value);
@@ -582,6 +617,9 @@ function AssetTable({
           asset={asset}
           onCopy={copy}
           onOpen={() => onOpen(asset)}
+          selected={selectedIds.includes(asset.id)}
+          onToggle={() => onToggle(asset.id)}
+          onReplace={() => onReplace(asset.id)}
         />
       ))}
     </div>
@@ -634,10 +672,16 @@ function TableAssetRow({
   asset,
   onCopy,
   onOpen,
+  selected,
+  onToggle,
+  onReplace,
 }: {
   asset: Asset;
   onCopy: (value: string) => void;
   onOpen: () => void;
+  selected: boolean;
+  onToggle: () => void;
+  onReplace: () => void;
 }) {
   const missingMetadata = !asset.alternativeText;
   return (
@@ -649,11 +693,14 @@ function TableAssetRow({
         <input
           type="checkbox"
           aria-label={`Select ${folderName(asset.publicId)}`}
+          checked={selected}
+          onChange={onToggle}
+          onClick={(event) => event.stopPropagation()}
           className="size-5 rounded border-slate-300 accent-[#4a45ff]"
         />
       </span>
       <span className="flex min-w-0 items-center gap-3 font-semibold text-[#172554]">
-        <FileImage className="size-5 shrink-0 text-slate-500" />
+        {isVideo(asset) ? <FileVideo className="size-5 shrink-0 text-slate-500" /> : <FileImage className="size-5 shrink-0 text-slate-500" />}
         <span className="truncate" title={folderName(asset.publicId)}>
           {folderName(asset.publicId)}
         </span>
@@ -783,14 +830,14 @@ function AssetDetailsSheet({
       >
         <SheetHeader className="border-b border-slate-200 px-6 py-5 pr-14">
           <SheetTitle className="flex min-w-0 items-center gap-3 text-base text-slate-700">
-            <FileImage className="size-5 shrink-0 text-slate-600" />
+            {isVideo(asset) ? <FileVideo className="size-5 shrink-0 text-slate-600" /> : <FileImage className="size-5 shrink-0 text-slate-600" />}
             <span className="truncate">{name}</span>
             <Link2 className="ml-auto size-5 shrink-0 text-slate-500" />
           </SheetTitle>
         </SheetHeader>
         <div className="bg-[linear-gradient(45deg,#f1f1f1_25%,transparent_25%),linear-gradient(-45deg,#f1f1f1_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f1f1f1_75%),linear-gradient(-45deg,transparent_75%,#f1f1f1_75%)] bg-[length:18px_18px] bg-[position:0_0,0_9px,9px_-9px,-9px_0px] p-8">
           <div className="mx-auto aspect-[1.35] max-w-[260px]">
-            <MediaPreview asset={asset} />
+            <MediaPreview asset={asset} controls />
           </div>
         </div>
         <div className="border-b border-slate-200 px-6 py-5">
@@ -912,9 +959,9 @@ function InfoField({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-function MediaPreview({ asset }: { asset: Asset }) {
+function MediaPreview({ asset, controls = false }: { asset: Asset; controls?: boolean }) {
   return isVideo(asset) ? (
-    <video src={asset.url} muted className="size-full object-contain" />
+    <video src={asset.url} autoPlay loop muted controls={controls} playsInline className="size-full object-contain" />
   ) : (
     <img
       src={asset.url}

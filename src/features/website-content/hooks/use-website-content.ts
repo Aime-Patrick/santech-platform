@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createWebsiteEntry, deleteAsset, deleteWebsiteEntry, getWebsiteEntry, listAssets, listWebsiteEntries, updateAsset, updateWebsiteEntry, uploadAsset } from "../api/website-content-api";
+import { createWebsiteEntry, deleteAsset, deleteWebsiteEntry, getWebsiteEntry, listAssets, listWebsiteEntries, moveAssets, replaceAsset, updateAsset, updateWebsiteEntry, uploadAsset } from "../api/website-content-api";
 import { websiteContentKeys } from "../queryKeys";
-import type { AssetUpdateInput, WebsiteEntryInput, WebsiteEntryUpdateInput } from "../types";
+import type { AssetMoveInput, AssetUpdateInput, WebsiteEntryInput, WebsiteEntryUpdateInput } from "../types";
 
 export function useWebsiteEntries(contentType?: string | null) {
   return useQuery({ queryKey: websiteContentKeys.list(contentType), queryFn: () => listWebsiteEntries(contentType), staleTime: 1000 * 60 * 5 });
@@ -30,6 +30,14 @@ export function useInfiniteAssets(folder?: string, enabled = true) {
 export function useUploadAsset() {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: ({ file, folder }: { file: File; folder?: string }) => uploadAsset(file, folder), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }) });
+}
+export function useReplaceAsset() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, file }: { id: string; file: File }) => replaceAsset(id, file), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }) });
+}
+export function useMoveAssets() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (input: AssetMoveInput) => moveAssets(input), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }) });
 }
 export function useUpdateAsset() {
   const queryClient = useQueryClient();
