@@ -20,7 +20,7 @@ export default async function CohortsPage() {
     );
   }
 
-  const includeAll = actor.roles.some(({ role }) => role.key === "administrator");
+  const includeAll = actor.roles.some((userRole: { role: { key: string } }) => userRole.role.key === "administrator");
   const cohorts = await listInstructorCohorts(actor.id, includeAll);
   const activeCount = cohorts.filter((cohort) => cohort.status === "ACTIVE").length;
   const totalLearners = cohorts.reduce((sum, cohort) => sum + cohort._count.members, 0);

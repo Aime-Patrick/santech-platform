@@ -18,7 +18,7 @@ export async function updateUserAccess(userId: string, formData: FormData) {
   ]);
   if (!target) throw new Error("User not found");
 
-  const hadAdministratorRole = target.roles.some(({ role }) => role.key === "administrator");
+  const hadAdministratorRole = target.roles.some((userRole: { role: { key: string } }) => userRole.role.key === "administrator");
   const keepsAdministratorRole = roles.some((role) => role.key === "administrator");
   if (hadAdministratorRole && (!keepsAdministratorRole || status !== "ACTIVE")) {
     const activeAdministrators = await prisma.user.count({
