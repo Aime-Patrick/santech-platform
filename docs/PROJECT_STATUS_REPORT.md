@@ -1,6 +1,6 @@
 # SAN TECH Platform — Feature Status Report
 
-**Date:** 26 Oct 2026
+**Date:** 27 Oct 2026
 **Stack:** Next.js (App Router) · PostgreSQL (Prisma) · TanStack Query · shadcn UI · Cloudinary · Resend
 
 ---
@@ -43,8 +43,8 @@
 ### Media Library
 - ✅ Upload to Cloudinary (direct + server-side), thumbnails, metadata
 - ✅ Grid + table views, search/filter by type and folder
-- ✅ Details sheet: caption & alt-text editing, copy link, download, delete (with Cloudinary cleanup)
-- ✅ Folder management (create/rename/move/delete), multi-select delete
+- ✅ Details sheet: caption & alt-text editing, copy link, download, delete (with Cloudinary cleanup), video playback controls and autoplay
+- ✅ Folder management (create/rename/move/delete), multi-select delete, asset replacement, and bulk move to folder
 
 ### Website Content Manager (SAN HUB)
 - ✅ Catalog content CRUD (articles, videos, resources) with publish states
@@ -70,11 +70,7 @@
 
 ## 2. Partially Working 🟡
 
-- 🟡 Admin reports — basic stats only; no export / advanced analytics yet
-- 🟡 Video/video-transcript content types — schema + detail page exist; no dedicated management UI
-- 🟡 Media "replace" & bulk "move to folder" — menu entries present, backend not implemented
-
----
+- 🟡 Admin reports — core metrics and CSV export are available; advanced analytics and PDF export remain planned
 
 ## 3. Expected but Not Yet Implemented 🔴
 
@@ -85,13 +81,17 @@
 - 🔴 Payment gateway integration (courses are currently free)
 - 🔴 Certificate QR codes
 - 🔴 Webhook management (status webhooks exist for reviews/applications only)
-- 🔴 Advanced admin reports (completion funnels, export to CSV/PDF)
+- 🔴 Advanced admin reports (completion funnels, PDF export, and deeper cohort analytics)
 - 🔴 Mobile-responsive polish pass for all dashboard pages
 - 🔴 Automated test suite (no unit/e2e tests yet)
 
 ---
 
 ## 4. Recent Fixes (this sprint)
+
+- 🔧 Video assets consolidated in the Media Library with autoplay previews and playable detail drawer
+- 🔧 Media replacement and bulk move-to-folder actions wired to Cloudinary and Prisma
+- 🔧 Learner reports now support live filtering, KPI metrics, and CSV export
 
 - 🔧 Media details-sheet actions wired and working (save/delete/copy/download)
 - 🔧 Card menus rebuilt with dropdown component (auto-positions, no clipping)
