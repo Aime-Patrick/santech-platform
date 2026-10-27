@@ -20,6 +20,8 @@ function formatStatus(status: string) {
   return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+type LearnerApplication = Awaited<ReturnType<typeof listLearnerApplications>>[number];
+
 export default async function ApplicationsPage() {
   const user = await getCurrentUser();
   if (user && hasPermission(user, "applications.review")) redirect("/dashboard/application-review");
@@ -76,7 +78,7 @@ export default async function ApplicationsPage() {
           <EmptyState icon={FileText} title="No applications yet" description="Your submitted applications and supporting files will appear here." />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {applications.map((application) => (
+            {applications.map((application: LearnerApplication) => (
               <Card key={application.id} className="border-slate-200 bg-white shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
