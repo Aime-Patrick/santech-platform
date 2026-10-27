@@ -25,7 +25,7 @@ export default async function CohortsPage() {
   const includeAll = actor.roles.some((userRole: { role: { key: string } }) => userRole.role.key === "administrator");
   const cohorts = await listInstructorCohorts(actor.id, includeAll);
   const activeCount = cohorts.filter((cohort: CohortSummary) => cohort.status === "ACTIVE").length;
-  const totalLearners = cohorts.reduce((sum, cohort: CohortSummary) => sum + cohort._count.members, 0);
+  const totalLearners = cohorts.reduce((sum: number, cohort: CohortSummary) => sum + cohort._count.members, 0);
 
   return (
     <section className="flex flex-col gap-6">
