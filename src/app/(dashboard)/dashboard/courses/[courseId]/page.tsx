@@ -175,7 +175,7 @@ export default async function CourseDetailPage({
                 Instructor:{" "}
                 <strong className="font-semibold text-foreground">
                   {course.instructors
-                    .map(({ instructor }) => `${instructor.firstName} ${instructor.lastName}`)
+                    .map((record: (typeof course.instructors)[number]) => `${record.instructor.firstName} ${record.instructor.lastName}`)
                     .join(", ")}
                 </strong>
               </span>
@@ -205,7 +205,7 @@ export default async function CourseDetailPage({
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {course.lessons.map((lesson) => {
+                  {course.lessons.map((lesson: (typeof course.lessons)[number]) => {
                     const completed = completedLessonIds.has(lesson.id);
                     return (
                       <div key={lesson.id} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
@@ -293,7 +293,7 @@ export default async function CourseDetailPage({
                         <option value="" disabled>
                           Select an instructor
                         </option>
-                        {instructors.map((instructor) => (
+                        {instructors.map((instructor: (typeof instructors)[number]) => (
                           <option key={instructor.id} value={instructor.id}>
                             {instructor.firstName} {instructor.lastName} {String.fromCharCode(183)} {instructor.email}
                           </option>
@@ -313,10 +313,10 @@ export default async function CourseDetailPage({
                       No cohorts scheduled for this course yet.
                     </div>
                   ) : (
-                    cohorts.map((cohort) => {
-                      const assignedIds = new Set(cohort.members.map(({ learner }) => learner.id));
+                    cohorts.map((cohort: (typeof cohorts)[number]) => {
+                      const assignedIds = new Set(cohort.members.map((member: (typeof cohort.members)[number]) => member.learner.id));
                       const availableLearners = courseEnrollments.filter(
-                        ({ learner }) => !assignedIds.has(learner.id)
+                        (record: (typeof courseEnrollments)[number]) => !assignedIds.has(record.learner.id)
                       );
 
                       return (
@@ -342,9 +342,9 @@ export default async function CourseDetailPage({
                               {cohort.members.length === 0 ? (
                                 <p className="text-xs italic text-muted-foreground">No learners assigned yet</p>
                               ) : (
-                                cohort.members.map(({ learner }) => (
-                                  <p key={learner.id} className="text-xs text-muted-foreground">
-                                    {String.fromCharCode(8226)} {learner.firstName} {learner.lastName}
+                                cohort.members.map((member: (typeof cohort.members)[number]) => (
+                                  <p key={member.learner.id} className="text-xs text-muted-foreground">
+                                    {String.fromCharCode(8226)} {member.learner.firstName} {member.learner.lastName}
                                   </p>
                                 ))
                               )}
@@ -361,9 +361,9 @@ export default async function CourseDetailPage({
                                 <option value="" disabled>
                                   Assign learner
                                 </option>
-                                {availableLearners.map(({ learner }) => (
-                                  <option key={learner.id} value={learner.id}>
-                                    {learner.firstName} {learner.lastName}
+                                {availableLearners.map((record: (typeof courseEnrollments)[number]) => (
+                                  <option key={record.learner.id} value={record.learner.id}>
+                                    {record.learner.firstName} {record.learner.lastName}
                                   </option>
                                 ))}
                               </select>
