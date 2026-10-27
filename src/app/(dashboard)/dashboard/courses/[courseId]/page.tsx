@@ -60,7 +60,7 @@ export default async function CourseDetailPage({
     canManage ? listInstructors() : Promise.resolve([]),
   ]);
 
-  const completedLessonIds = new Set(completedLessonRecords.map(({ lessonId }) => lessonId));
+  const completedLessonIds = new Set(completedLessonRecords.map((record: { lessonId: string }) => record.lessonId));
   if (course.status !== "PUBLISHED" && !canManage) notFound();
 
   const completedCount = completedLessonIds.size;
