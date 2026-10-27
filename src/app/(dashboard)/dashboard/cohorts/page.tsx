@@ -7,6 +7,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hasAnyPermission } from "@/lib/authorization/permissions";
 import { listInstructorCohorts } from "@/lib/services/instructor-service";
 
+type CohortSummary = Awaited<ReturnType<typeof listInstructorCohorts>>[number];
+
 export default async function CohortsPage() {
   const actor = await getCurrentUser();
   if (!actor || !hasAnyPermission(actor, ["cohorts.manage", "attendance.mark"])) {
@@ -22,8 +24,8 @@ export default async function CohortsPage() {
 
   const includeAll = actor.roles.some((userRole: { role: { key: string } }) => userRole.role.key === "administrator");
   const cohorts = await listInstructorCohorts(actor.id, includeAll);
-  const activeCount = cohorts.filter((cohort) => cohort.status === "ACTIVE").length;
-  const totalLearners = cohorts.reduce((sum, cohort) => sum + cohort._count.members, 0);
+  const activeCount = cohorts.filter((cohort: CohortSummary) => cohort.status === "ACTIVE").length;
+  const totalLearners = cohorts.reduce((sum, cohort: CohortSummary) => sum + cohort._count.members, 0);
 
   return (
     <section className="flex flex-col gap-6">
