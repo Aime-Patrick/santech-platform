@@ -14,9 +14,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect("/login");
 
   const permissions = getPermissionKeys(user);
-  const roles = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => entry.role.name);
+  const roles: string[] = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => String(entry.role.name));
   const userName = `${user.firstName} ${user.lastName}`;
-  const activeRoleKeys = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => entry.role.key);
+  const activeRoleKeys: string[] = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => String(entry.role.key));
   const isLearner = activeRoleKeys.includes("learner");
   const learnerTracks = isLearner ? (await getLearnerDashboard(user.id)).filter((item: LearnerTrack) => !["REJECTED", "WITHDRAWN"].includes(item.status)).map((item: LearnerTrack) => ({ id: item.course.id, title: item.course.title })) : [];
 
