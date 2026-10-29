@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listPublishedCatalogItems } from "@/lib/services/catalog-service";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

@@ -2,6 +2,7 @@
 import { getPublicContactInfo } from "@/lib/services/cms-content-service";
 
 export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

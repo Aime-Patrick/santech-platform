@@ -2,6 +2,7 @@
 import { getPublishedCatalogItem } from "@/lib/services/catalog-service";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
