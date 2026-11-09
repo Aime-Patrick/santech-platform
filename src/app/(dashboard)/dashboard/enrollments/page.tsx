@@ -18,7 +18,6 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 
 type LearnerEnrollment = Awaited<ReturnType<typeof getLearnerDashboard>>[number];
-type ActiveRole = { role: { isActive: boolean; key: string } };
 
 function formatDate(value: Date | null) {
   if (!value) return null;
@@ -35,16 +34,14 @@ export default async function EnrollmentsPage() {
   const actor = await getCurrentUser();
   if (!actor) redirect("/login");
 
-  const activeRoleKeys = actor.roles.filter((entry: ActiveRole) => entry.role.isActive).map((entry: ActiveRole) => entry.role.key);
-  const isLearner = activeRoleKeys.includes("learner");
-  if (!isLearner || !hasPermission(actor, "enrollments.apply")) {
+  if (!hasPermission(actor, "enrollments.apply")) {
     return (
       <section className="mx-auto max-w-3xl">
         <EmptyState
           icon={GraduationCap}
-          eyebrow="Learner workspace"
-          title="Enrollments are available to learners"
-          description="Sign in with a learner account to view your courses, progress, cohorts, and attendance."
+          eyebrow="Personal learning workspace"
+          title="Enrollment access is not enabled for your account"
+          description="Ask an administrator to grant the personal enrollment permission to view your courses, progress, cohorts, and attendance."
         />
       </section>
     );

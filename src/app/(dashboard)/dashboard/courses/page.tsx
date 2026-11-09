@@ -1,10 +1,13 @@
 import { requirePermission, hasPermission } from "@/lib/authorization/permissions";
+import { prisma } from "@/lib/db/prisma";
 import { listCourses } from "@/lib/services/course-service";
 
+import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { AnalyticsCard } from "@/components/shadcn-space/card/card-05";
 import { CourseCreateDrawer } from "@/components/courses/course-create-drawer";
 import { CourseListClient } from "@/components/courses/course-list-client";
+import { Button } from "@/components/ui/button";
 
 
 type CourseSummary = Awaited<ReturnType<typeof listCourses>>[number];
@@ -12,8 +15,17 @@ type CourseSummary = Awaited<ReturnType<typeof listCourses>>[number];
 export default async function CoursesPage() {
   const actor = await requirePermission("courses.view");
   const canManage = hasPermission(actor, "courses.create") || hasPermission(actor, "courses.update");
-  const courses = await listCourses(canManage);
   const canCreate = hasPermission(actor, "courses.create");
+  const [courses, programs] = await Promise.all([
+    listCourses(canManage),
+    canCreate
+      ? prisma.catalogItem.findMany({
+          where: { category: "Programs", status: { not: "ARCHIVED" } },
+          select: { id: true, title: true },
+          orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+        })
+      : Promise.resolve([]),
+  ]);
 
   const published = courses.filter((c: CourseSummary) => c.status === "PUBLISHED").length;
   const drafts = courses.filter((c: CourseSummary) => c.status === "DRAFT").length;
@@ -25,7 +37,7 @@ export default async function CoursesPage() {
       <PageHeader
         title="Courses"
         description="Manage published courses, curriculum, and enrolled learners across cohorts."
-        actions={canCreate ? <CourseCreateDrawer /> : null}
+        actions={canCreate ? programs.length > 0 ? <CourseCreateDrawer programs={programs} /> : <Button render={<Link href="/dashboard/catalog" />}>Create a program first</Button> : null}
       />
 
       {/* Curriculum Analytics Summary */}

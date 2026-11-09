@@ -1,3 +1,15 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-export function useCreateCourse() { const client=useQueryClient(); return useMutation({ mutationFn: async (form: FormData) => { const response=await fetch("/api/admin/courses",{method:"POST",body:form}); const body=await response.json().catch(()=>null); if(!response.ok) throw new Error(body?.error ?? "Unable to create course."); return body; }, onSuccess:()=>client.invalidateQueries({queryKey:["courses"]}) }); }
+import { createCourse } from "../api/create-course";
+import { courseKeys } from "../query-keys";
+
+export function useCreateCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createCourse,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: courseKeys.all });
+    },
+  });
+}

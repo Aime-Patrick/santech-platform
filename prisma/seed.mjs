@@ -21,7 +21,7 @@ const permissions = [
   ["courses.delete", "Delete courses", "Courses"],
   ["lessons.manage", "Manage lessons", "Courses"],
   ["cohorts.manage", "Manage cohorts", "Cohorts"],
-  ["enrollments.apply", "Apply for enrollment", "Enrollments"],
+  ["enrollments.apply", "Apply for personal enrollment", "Enrollments"],
   ["enrollments.review", "Review enrollments", "Enrollments"],
   ["attendance.view", "View attendance", "Attendance"],
   ["attendance.mark", "Mark attendance", "Attendance"],

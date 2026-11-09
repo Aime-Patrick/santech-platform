@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { Plus, X, BookOpen, Clock, Layers } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, X } from "lucide-react";
 import {
   Drawer,
   DrawerClose,
@@ -23,18 +24,28 @@ import { useCreateCourse } from "@/features/courses";
 
 
 interface CourseCreateDrawerProps {
-
+  programs: Array<{ id: string; title: string }>;
   trigger?: React.ReactNode;
 }
 
-export function CourseCreateDrawer({ trigger }: CourseCreateDrawerProps) {
+export function CourseCreateDrawer({ programs, trigger }: CourseCreateDrawerProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const router = useRouter();
   const mutation = useCreateCourse();
 
   const slug = slugify(title);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); mutation.mutate(new FormData(e.currentTarget), { onSuccess: () => setOpen(false) }); };
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    mutation.mutate(new FormData(e.currentTarget), {
+      onSuccess: () => {
+        setOpen(false);
+        setTitle("");
+        router.refresh();
+      },
+    });
+  };
 
   return (
     <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
@@ -58,7 +69,7 @@ export function CourseCreateDrawer({ trigger }: CourseCreateDrawerProps) {
                 Create Course Pathway
               </DrawerTitle>
               <DrawerDescription className="text-xs text-muted-foreground">
-                Set up a new curriculum track, duration, and learning objectives.
+                Every course is created inside a program and appears in its learning pathway.
               </DrawerDescription>
             </div>
             <DrawerClose
@@ -87,6 +98,23 @@ export function CourseCreateDrawer({ trigger }: CourseCreateDrawerProps) {
                 placeholder="e.g. Full-Stack Software Engineering"
                 required
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="create-course-program">Program</Label>
+              <select
+                id="create-course-program"
+                name="programId"
+                required
+                defaultValue=""
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <option value="" disabled>Select a program</option>
+                {programs.map((program) => (
+                  <option key={program.id} value={program.id}>{program.title}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground">Create the program in the catalog first if it is not listed.</p>
             </div>
 
             <div className="space-y-1.5">
@@ -153,6 +181,7 @@ export function CourseCreateDrawer({ trigger }: CourseCreateDrawerProps) {
           </div>
 
           <DrawerFooter className="border-t border-border p-6">
+            {mutation.error ? <p role="alert" className="text-sm text-destructive">{mutation.error.message}</p> : null}
             <div className="flex items-center justify-end gap-2">
               <DrawerClose
                 render={

@@ -14,10 +14,6 @@ export async function GET(request: Request) {
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from >= to) {
     return NextResponse.json({ error: "A valid from/to date range is required" }, { status: 400 });
   }
-  if (to.getTime() - from.getTime() > 93 * 24 * 60 * 60 * 1000) {
-    return NextResponse.json({ error: "Calendar range cannot exceed 93 days" }, { status: 400 });
-  }
-
   const data = await prisma.appointmentBooking.findMany({
     where: {
       appointmentType: { hostId: actor.id },

@@ -1,22 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requirePermission } from "@/lib/authorization/permissions";
 import { prisma } from "@/lib/db/prisma";
 import { issueCertificateForEnrollment } from "@/lib/services/certificate-service";
 import { slugify } from "@/lib/slugify";
 import { sendEnrollmentConfirmationEmail } from "@/lib/email/learner-email";
-
-const optionalWeeks = z.preprocess((value) => value === "" || value === null ? undefined : Number(value), z.number().int().positive().max(104).optional());
-const courseSchema = z.object({
-  title: z.string().trim().min(3).max(120),
-  summary: z.string().trim().max(240).optional(),
-  description: z.string().trim().max(3000).optional(),
-  level: z.string().trim().max(40).optional(),
-  durationWeeks: optionalWeeks,
-});
 
 const lessonSchema = z.object({
   title: z.string().trim().min(3).max(140),
@@ -29,28 +19,6 @@ const cohortSchema = z.object({
   startsAt: z.preprocess((value) => value ? new Date(String(value)) : undefined, z.date().optional()),
   endsAt: z.preprocess((value) => value ? new Date(String(value)) : undefined, z.date().optional()),
 });
-
-export async function createCourse(formData: FormData) {
-  await requirePermission("courses.create");
-  const title = String(formData.get("title") ?? "");
-  const parsed = courseSchema.safeParse({
-    title,
-    summary: String(formData.get("summary") ?? "").trim() || undefined,
-    description: String(formData.get("description") ?? "").trim() || undefined,
-    level: String(formData.get("level") ?? "").trim() || undefined,
-    durationWeeks: formData.get("durationWeeks"),
-  });
-  if (!parsed.success) throw new Error("Enter a valid course title and course details.");
-
-  const course = await prisma.course.create({
-    data: {
-      ...parsed.data,
-      slug: slugify(parsed.data.title),
-    },
-  });
-  revalidatePath("/dashboard/courses");
-  redirect(`/dashboard/courses/${course.id}`);
-}
 
 export async function updateCourseStatus(courseId: string, formData: FormData) {
   const actor = await requirePermission("courses.update");

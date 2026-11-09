@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,18 +9,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { slugify } from "@/lib/slugify";
 import { useCreateCourse } from "@/features/courses";
 
-type CreateCourseAction = (formData: FormData) => void | Promise<void>;
-
-export function CourseCreateForm() {
+export function CourseCreateForm({ programs }: { programs: Array<{ id: string; title: string }> }) {
   const mutation = useCreateCourse();
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const slug = slugify(title);
 
   return (
-    <form onSubmit={(event) => { event.preventDefault(); mutation.mutate(new FormData(event.currentTarget)); }} className="grid gap-4 border-t border-slate-100 p-5 md:grid-cols-2">
+    <form onSubmit={(event) => { event.preventDefault(); mutation.mutate(new FormData(event.currentTarget), { onSuccess: () => router.refresh() }); }} className="grid gap-4 border-t border-slate-100 p-5 md:grid-cols-2">
       <label className="grid gap-2">
         <Label htmlFor="course-title">Title</Label>
         <Input id="course-title" name="title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Full-Stack Software Engineering" required />
+      </label>
+      <label className="grid gap-2">
+        <Label htmlFor="course-program">Program</Label>
+        <select id="course-program" name="programId" defaultValue="" required className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="" disabled>Select a program</option>
+          {programs.map((program) => <option key={program.id} value={program.id}>{program.title}</option>)}
+        </select>
       </label>
       <label className="grid gap-2">
         <Label htmlFor="course-slug">URL key</Label>
@@ -42,6 +49,7 @@ export function CourseCreateForm() {
         <Label htmlFor="course-description">Description</Label>
         <Textarea id="course-description" name="description" placeholder="Explain what learners will build and how the pathway works." />
       </label>
+      {mutation.error ? <p role="alert" className="text-sm text-destructive md:col-span-2">{mutation.error.message}</p> : null}
       <div className="flex justify-end md:col-span-2">
         <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Creating..." : "Create draft course"}</Button>
       </div>
