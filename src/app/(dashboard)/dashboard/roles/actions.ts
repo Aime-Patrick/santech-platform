@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requirePermission } from "@/lib/authorization/permissions";
 import { prisma } from "@/lib/db/prisma";
@@ -55,7 +56,7 @@ export async function updateRole(roleId: string, formData: FormData) {
   }
 
   const permissionIds = permissionIdsFrom(formData);
-  await prisma.$transaction(async (transaction) => {
+  await prisma.$transaction(async (transaction: Prisma.TransactionClient) => {
     await transaction.role.update({ where: { id: roleId }, data: { ...parsed.data, isActive } });
     await transaction.rolePermission.deleteMany({ where: { roleId } });
     if (permissionIds.length > 0) {
