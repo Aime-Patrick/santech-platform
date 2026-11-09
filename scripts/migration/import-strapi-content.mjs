@@ -34,22 +34,44 @@ if (!write) {
 }
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required for --write mode.");
 const prisma = new PrismaClient();
-try {
-  const imported = await prisma.$transaction(async (tx) => {
-    let count = 0;
-    for (const { contentType, payload } of entries) {
-      const data = { contentType, ...metadata(payload), payload };
+const retryableCodes = new Set(["P1001", "P1017", "P2024", "P2028"]);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function writeEntry({ contentType, payload }) {
+  const data = { contentType, ...metadata(payload), payload };
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
       if (data.sourceDocumentId) {
-        await tx.cmsEntry.upsert({ where: { contentType_sourceDocumentId: { contentType, sourceDocumentId: data.sourceDocumentId } }, create: data, update: data });
+        await prisma.cmsEntry.upsert({
+          where: { contentType_sourceDocumentId: { contentType, sourceDocumentId: data.sourceDocumentId } },
+          create: data,
+          update: data,
+        });
       } else {
-        const existing = data.sourceId ? await tx.cmsEntry.findFirst({ where: { contentType, sourceId: data.sourceId } }) : null;
-        if (existing) await tx.cmsEntry.update({ where: { id: existing.id }, data });
-        else await tx.cmsEntry.create({ data });
+        const existing = data.sourceId
+          ? await prisma.cmsEntry.findFirst({ where: { contentType, sourceId: data.sourceId } })
+          : null;
+        if (existing) await prisma.cmsEntry.update({ where: { id: existing.id }, data });
+        else await prisma.cmsEntry.create({ data });
       }
-      count += 1;
+      return;
+    } catch (error) {
+      if (!retryableCodes.has(error?.code) || attempt === 4) throw error;
+      await prisma.$disconnect().catch(() => {});
+      await sleep(attempt * 500);
     }
-    return count;
-  });
+  }
+}
+
+try {
+  let imported = 0;
+  for (const entry of entries) {
+    await writeEntry(entry);
+    imported += 1;
+    if (imported % 10 === 0 || imported === entries.length) {
+      console.log(`Imported ${imported}/${entries.length} content entries`);
+    }
+  }
   console.log(JSON.stringify({ ...summary, imported }, null, 2));
 } finally {
   await prisma.$disconnect();

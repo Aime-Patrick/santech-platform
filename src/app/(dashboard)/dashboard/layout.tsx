@@ -13,17 +13,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const permissions = getPermissionKeys(user);
+  const permissions: string[] = getPermissionKeys(user).map(String);
   const roles: string[] = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => String(entry.role.name));
   const userName = `${user.firstName} ${user.lastName}`;
   const activeRoleKeys: string[] = user.roles.filter((entry: DashboardRole) => entry.role.isActive).map((entry: DashboardRole) => String(entry.role.key));
   const isLearner = activeRoleKeys.includes("learner");
+  const isAdministrator = activeRoleKeys.includes("administrator");
   const learnerTracks = isLearner ? (await getLearnerDashboard(user.id)).filter((item: LearnerTrack) => !["REJECTED", "WITHDRAWN"].includes(item.status)).map((item: LearnerTrack) => ({ id: item.course.id, title: item.course.title })) : [];
 
   return (
     <PermissionProvider permissions={permissions} roles={roles}>
       <div className="flex h-svh w-full overflow-hidden bg-background text-slate-900">
-        <AppSidebar permissions={permissions} userName={userName} roles={roles} isLearner={isLearner} learnerTracks={learnerTracks} />
+        <AppSidebar permissions={permissions} userName={userName} roles={roles} isLearner={isLearner} isAdministrator={isAdministrator} learnerTracks={learnerTracks} />
         <div id="snap-main-container" className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           <main className="min-h-full w-full px-4 py-8 sm:px-6 lg:px-8">
             <RouteTransition>{children}</RouteTransition>

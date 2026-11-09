@@ -8,6 +8,15 @@ const durationWeeks = (item) => {
   return match ? Number(match[1]) : null;
 };
 const prisma = new PrismaClient();
+const retry = async (operation, label) => {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try { return await operation(); } catch (error) {
+      if (!["P2028", "P1001", "P1017"].includes(error?.code) || attempt === 3) throw error;
+      console.warn(`Retrying ${label} after ${error.code}`);
+      await new Promise((resolve) => setTimeout(resolve, 750 * (attempt + 1)));
+    }
+  }
+};
 try {
   const items = await prisma.catalogItem.findMany({ orderBy: { sortOrder: "asc" }, include: { course: { select: { id: true, slug: true, title: true } } } });
   const existingCourses = await prisma.course.findMany({ select: { id: true, sourceId: true, sourceDocumentId: true, slug: true, title: true } });
@@ -26,18 +35,17 @@ try {
     preview.push({ catalogItemId: item.id, title: item.title, slug, action: "create-and-link" });
   }
   if (!write) { console.log(JSON.stringify({ mode: "preview", total: items.length, alreadyLinked: preview.filter((x) => x.action === "already-linked").length, linkExisting: preview.filter((x) => x.action === "link-existing").length, toCreate: preview.filter((x) => x.action === "create-and-link").length, preview }, null, 2)); process.exit(0); }
-  const result = await prisma.$transaction(async (tx) => {
-    let created = 0; let linked = 0;
-    for (const item of items) {
+  let created = 0; let linked = 0;
+  for (const item of items) {
       if (item.course) { linked += 1; continue; }
       const match = findMatch(item);
-      if (match) { await tx.catalogItem.update({ where: { id: item.id }, data: { courseId: match.id } }); linked += 1; continue; }
+      if (match) { await retry(() => prisma.catalogItem.update({ where: { id: item.id }, data: { courseId: match.id } }), `catalog link ${item.id}`); linked += 1; continue; }
       const baseSlug = slugify(item.slug || item.title); let slug = baseSlug; let suffix = 2;
-      while (await tx.course.findUnique({ where: { slug }, select: { id: true } })) slug = `${baseSlug}-${suffix++}`;
-      const course = await tx.course.create({ data: { sourceId: item.sourceId, sourceDocumentId: item.sourceDocumentId, slug, title: item.title, summary: item.subtitle || item.description, description: item.description, level: item.level, durationWeeks: durationWeeks(item), status: item.status, createdAt: item.createdAt, updatedAt: item.updatedAt } });
-      await tx.catalogItem.update({ where: { id: item.id }, data: { courseId: course.id } }); created += 1; linked += 1;
-    }
-    return { created, linked };
-  });
+      while (await retry(() => prisma.course.findUnique({ where: { slug }, select: { id: true } }), `course lookup ${slug}`)) slug = `${baseSlug}-${suffix++}`;
+      const course = await retry(() => prisma.course.create({ data: { sourceId: item.sourceId, sourceDocumentId: item.sourceDocumentId, slug, title: item.title, summary: item.subtitle || item.description, description: item.description, level: item.level, durationWeeks: durationWeeks(item), status: item.status, createdAt: item.createdAt, updatedAt: item.updatedAt } }), `course create ${item.id}`);
+      await retry(() => prisma.catalogItem.update({ where: { id: item.id }, data: { courseId: course.id } }), `catalog link ${item.id}`); created += 1; linked += 1;
+      existingCourses.push({ id: course.id, sourceId: item.sourceId, sourceDocumentId: item.sourceDocumentId, slug, title: item.title });
+  }
+  const result = { created, linked };
   console.log(JSON.stringify({ mode: "write", ...result }, null, 2));
 } finally { await prisma.$disconnect(); }

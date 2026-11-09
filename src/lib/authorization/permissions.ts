@@ -41,9 +41,9 @@ export function hasPermission(user: UserWithAccess, permission: PermissionKey | 
   );
 }
 
-export function getPermissionKeys(user: UserWithAccess) {
+export function getPermissionKeys(user: UserWithAccess): string[] {
   return [...new Set(user.roles.flatMap(({ role }) =>
-    role.isActive ? role.permissions.map(({ permission }) => permission.key) : [],
+    role.isActive ? role.permissions.map(({ permission }) => String(permission.key)) : [],
   ))];
 }
 
@@ -55,5 +55,13 @@ export async function requirePermission(permission: PermissionKey | string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   if (!hasPermission(user, permission)) throw new Error("FORBIDDEN");
+  return user;
+}
+
+export async function requireAdministrator() {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+  const isAdministrator = user.roles.some(({ role }) => role.isActive && role.key === "administrator");
+  if (!isAdministrator) throw new Error("FORBIDDEN");
   return user;
 }

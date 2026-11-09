@@ -7,7 +7,17 @@ const database = process.env.STRAPI_MIGRATION_DB ?? "strapi_migration";
 const user = process.env.STRAPI_MIGRATION_USER ?? "migration";
 
 function queryJson(sql) {
-  const output = execFileSync("docker", ["exec", container, "psql", "-U", user, "-d", database, "-At", "-c", sql], { encoding: "utf8" }).trim();
+  const connectionString = process.env.STRAPI_MIGRATION_DATABASE_URL;
+  const postgresUrl = connectionString ? new URL(connectionString) : null;
+  postgresUrl?.searchParams.delete("schema");
+  const command = connectionString ? "psql" : "docker";
+  const args = connectionString
+    ? ["-X", "-q", "-t", "-A", "-c", sql]
+    : ["exec", container, "psql", "-U", user, "-d", database, "-At", "-c", sql];
+  const output = execFileSync(command, args, {
+    encoding: "utf8",
+    env: postgresUrl ? { ...process.env, PGDATABASE: postgresUrl.toString() } : process.env,
+  }).trim();
   return output ? JSON.parse(output) : [];
 }
 
@@ -32,7 +42,7 @@ const report = {
   duplicateSlugs,
   missingCategoryLinks,
 };
-const outputDir = path.resolve("tmp");
+const outputDir = path.resolve(process.env.STRAPI_MIGRATION_OUTPUT_DIR || "tmp");
 await fs.mkdir(outputDir, { recursive: true });
 const output = path.join(outputDir, `strapi-dry-run-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 await fs.writeFile(output, JSON.stringify(report, null, 2));

@@ -61,6 +61,11 @@ export async function listPublishedCmsEntries(contentType: PublicCmsContentType,
   return { data: entries, meta: { total: entries.length, limit, contentType } };
 }
 function publicMedia(value: unknown) {
+  // The content editor stores selected assets as URL strings. Older imported
+  // Strapi entries store them as { url, alternativeText } objects.
+  if (typeof value === "string" && value.trim()) {
+    return { url: value.trim(), alternativeText: null };
+  }
   if (!value || typeof value !== "object") return null;
   const media = value as { url?: unknown; alternativeText?: unknown };
   return typeof media.url === "string" ? { url: media.url, alternativeText: typeof media.alternativeText === "string" ? media.alternativeText : null } : null;

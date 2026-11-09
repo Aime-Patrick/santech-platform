@@ -13,6 +13,7 @@ import {
   Calendar,
   ChevronDown,
   ClipboardList,
+  Database,
   FileText,
   Folder,
   GraduationCap,
@@ -65,6 +66,7 @@ export type AppSidebarProps = {
   userName: string;
   roles: string[];
   isLearner: boolean;
+  isAdministrator: boolean;
   learnerTracks: Array<{ id: string; title: string }>;
 };
 
@@ -145,7 +147,8 @@ export function getSectionFromPath(pathname: string): SidebarSection {
   }
   if (
     pathname.startsWith("/dashboard/roles") ||
-    pathname.startsWith("/dashboard/audit-logs")
+    pathname.startsWith("/dashboard/audit-logs") ||
+    pathname.startsWith("/dashboard/data-migration")
   ) {
     return "settings";
   }
@@ -157,6 +160,7 @@ export function AppSidebar({
   userName,
   roles,
   isLearner,
+  isAdministrator,
   learnerTracks,
 }: AppSidebarProps) {
   const pathname = usePathname();
@@ -1401,6 +1405,16 @@ export function AppSidebar({
                         />
                         <span>Audit Logs</span>
                       </Link>
+                      {isAdministrator ? (
+                        <Link
+                          href="/dashboard/data-migration"
+                          data-active={pathname === "/dashboard/data-migration" ? "" : undefined}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
+                        >
+                          <Database className="size-4 text-slate-500" strokeWidth={1.8} />
+                          <span>Data migration</span>
+                        </Link>
+                      ) : null}
                     </nav>
 
                     <Collapsible

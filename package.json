@@ -19,6 +19,7 @@
         "migration:import:catalog": "node scripts/migration/import-strapi-catalog.mjs",
         "migration:import:content": "node scripts/migration/import-strapi-content.mjs",
         "migration:import:users": "node scripts/migration/import-strapi-users.mjs",
+        "migration:import:all": "node scripts/migration/import-strapi-all.mjs",
         "migration:link:courses": "node scripts/migration/link-catalog-courses.mjs"
     },
     "dependencies": {
