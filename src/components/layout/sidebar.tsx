@@ -100,6 +100,7 @@ const websiteContentTypes = [
   "recognition",
   "san-hub-book",
   "san-hub-book-category",
+  "site-setting",
   "site-stat",
   "team-member",
   "tech-pulse-article",

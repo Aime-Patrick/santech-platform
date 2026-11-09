@@ -34,8 +34,10 @@ export function WebsiteContentEditor({ id }: { id: string }) {
     const nextEntry = entryQuery.data?.data?.[0] as Entry | undefined;
     if (!nextEntry) return;
     const nextTitle = nextEntry.title ?? String(nextEntry.payload?.label ?? nextEntry.payload?.stage ?? nextEntry.payload?.year ?? nextEntry.payload?.title ?? "Untitled entry");
-    setEntry(nextEntry as Entry); setPayload(nextEntry.payload ?? {}); setTitle(nextTitle); setSlug(nextEntry.slug ?? ""); setStatus(nextEntry.status ?? "DRAFT");
-    setOriginal({ title: nextTitle, slug: nextEntry.slug ?? "", payload: JSON.stringify(nextEntry.payload ?? {}) });
+    const nextPayload = { ...(nextEntry.payload ?? {}) };
+    if (nextEntry.contentType === "site-setting" && !("eVisitorsVideo" in nextPayload)) nextPayload.eVisitorsVideo = null;
+    setEntry(nextEntry as Entry); setPayload(nextPayload); setTitle(nextTitle); setSlug(nextEntry.slug ?? ""); setStatus(nextEntry.status ?? "DRAFT");
+    setOriginal({ title: nextTitle, slug: nextEntry.slug ?? "", payload: JSON.stringify(nextPayload) });
   }, [entryQuery.data]);
 
   const dirty = title !== original.title || slug !== original.slug || JSON.stringify(payload) !== original.payload;
@@ -60,7 +62,7 @@ export function WebsiteContentEditor({ id }: { id: string }) {
   if (entryQuery.isLoading) return <div className="p-8 text-slate-500">Loading entry...</div>
   if (!entry) return <div className="p-8 text-slate-500">{entryQuery.error?.message ?? "Entry not found."}</div>;
 
-  const fields = Object.entries(payload).filter(([key, value]) => !hidden.has(key) && !/(alt)$/i.test(key) && (["string", "number", "boolean"].includes(typeof value) || /(image|logo|media|photo|thumbnail)/i.test(key)));
+  const fields = Object.entries(payload).filter(([key, value]) => !hidden.has(key) && !/(alt)$/i.test(key) && (["string", "number", "boolean"].includes(typeof value) || /(image|logo|media|photo|thumbnail|video)/i.test(key)));
   const mediaUrl = (key: string) => { const value = payload[key]; return typeof value === "string" ? value : value && typeof value === "object" && "url" in value ? String((value as { url?: unknown }).url ?? "") : ""; };
   const maxLength = (key: string) => /description|body|content/i.test(key) ? 400 : /slug|label|title|name|stage/i.test(key) ? 100 : /imageAlt/i.test(key) ? 255 : null;
   const renderField = ([key, value]: [string, unknown]) => {

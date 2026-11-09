@@ -4,6 +4,7 @@ import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +65,9 @@ export default function LoginPage() {
               <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="size-6 rounded border-[#bfc3d7] accent-[#4a45ff]" />
               Remember me
             </label>
+            <div className="-mt-4 text-right">
+              <Link href="/forgot-password" className="text-sm font-medium text-[#4a45ff] hover:underline">Forgot password?</Link>
+            </div>
             {error ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
             <Button type="submit" disabled={loginMutation.isPending || enrollmentMutation.isPending} className="h-10 w-full rounded-md bg-[#4a45ff] text-sm hover:bg-[#3934db]">{loginMutation.isPending || enrollmentMutation.isPending ? "Logging in..." : "Login"}</Button>
           </form>

@@ -106,6 +106,7 @@ model User {
   updatedAt            DateTime           @updatedAt
   roles                UserRole[]
   sessions             Session[]
+  passwordResetTokens  PasswordResetToken[]
   enrollments          Enrollment[]       @relation("LearnerEnrollments")
   applications         Application[]      @relation("ApplicantApplications")
   courseAssignments    CourseInstructor[]
@@ -239,6 +240,19 @@ model Session {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([userId, createdAt])
 }
 
 model Course {
