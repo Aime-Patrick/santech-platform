@@ -67,6 +67,11 @@
   --sidebar-ring: #4a45ff;
 }
 
+.dashboard-white-surface {
+  --background: #ffffff;
+  background-color: #ffffff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

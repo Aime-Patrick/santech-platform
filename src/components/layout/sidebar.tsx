@@ -199,12 +199,7 @@ export function AppSidebar({
     "users.manage",
     "applications.review",
   ]);
-  const canReports = canAny([
-    "grades.view",
-    "attendance.view",
-    "courses.view",
-    "enrollments.review",
-  ]);
+  const canReports = canAny(["enrollments.review"]);
   const canSettings = canAny(["roles.view", "roles.manage", "audit_logs.view"]);
 
   // Detect section from current path

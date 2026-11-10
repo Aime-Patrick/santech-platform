@@ -23,10 +23,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <PermissionProvider permissions={permissions} roles={roles}>
-      <div className="flex h-svh w-full overflow-hidden bg-background text-slate-900">
+      <div className="dashboard-white-surface flex h-svh w-full overflow-hidden bg-background text-slate-900">
         <AppSidebar permissions={permissions} userName={userName} roles={roles} isLearner={isLearner} isAdministrator={isAdministrator} learnerTracks={learnerTracks} />
         <div id="snap-main-container" className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-          <main className="min-h-full w-full px-4 py-8 sm:px-6 lg:px-8">
+          <main className="min-h-full w-full bg-background px-4 py-8 sm:px-6 lg:px-8">
             <RouteTransition>{children}</RouteTransition>
           </main>
         </div>
