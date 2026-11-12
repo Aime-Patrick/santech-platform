@@ -1,4 +1,4 @@
-import type { Asset, AssetUpdateInput, WebsiteEntry, WebsiteEntryInput, WebsiteEntryUpdateInput } from "../types";
+import type { Asset, AssetFolder, AssetFolderCreateInput, AssetUpdateInput, WebsiteEntry, WebsiteEntryInput, WebsiteEntryUpdateInput } from "../types";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -26,13 +26,22 @@ export async function deleteWebsiteEntry(id: string) {
 export type AssetPage = { data: Asset[]; page: number; pageSize: number; hasMore: boolean; nextPage: number | null };
 export async function listAssets(folder?: string, page = 1, pageSize = 15) {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-  if (folder) params.set("folder", folder);
+  if (folder !== undefined) params.set("folder", folder);
   return request<AssetPage>("/api/admin/assets?" + params.toString());
+}
+export async function listAssetFolders(parent?: string, all = false) {
+  const params = new URLSearchParams();
+  if (parent !== undefined) params.set("parent", parent);
+  if (all) params.set("all", "true");
+  return request<{ data: AssetFolder[] }>(`/api/admin/assets/folders?${params.toString()}`);
+}
+export async function createAssetFolder(input: AssetFolderCreateInput) {
+  return request<{ data: AssetFolder }>("/api/admin/assets/folders", { method: "POST", body: JSON.stringify(input) });
 }
 export async function uploadAsset(file: File, folder?: string) {
   const form = new FormData();
   form.append("file", file);
-  form.append("folder", folder || "santech-platform/website-content");
+  form.append("appFolder", folder ?? "");
   const response = await fetch("/api/admin/assets", { method: "POST", body: form });
   const body = (await response.json().catch(() => ({}))) as { data?: Asset; error?: string };
   if (!response.ok) throw new Error(body.error ?? "The asset upload failed.");

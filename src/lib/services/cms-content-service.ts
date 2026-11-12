@@ -134,7 +134,24 @@ export async function getPublicCertificates() {
   const entries = await prisma.cmsEntry.findMany({ where: { contentType: "certificate", status: "PUBLISHED" }, orderBy: { sourceCreatedAt: "asc" }, take: 100, select: { payload: true } });
   return entries.map(({ payload }) => {
     const item = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
-    const media = item.image && typeof item.image === "object" ? item.image as Record<string, unknown> : null;
-    return { title: typeof item.title === "string" ? item.title : "", issuer: typeof item.issuer === "string" ? item.issuer : "", description: typeof item.description === "string" ? item.description : "", orientation: item.orientation === "landscape" ? "landscape" : "portrait", image: media && typeof media.url === "string" ? { url: media.url } : null, imageAlt: typeof item.imageAlt === "string" ? item.imageAlt : null };
+    const mediaUrl = (value: unknown) => {
+      if (typeof value === "string") return value;
+      if (value && typeof value === "object" && "url" in value && typeof value.url === "string") return value.url;
+      return null;
+    };
+    const imageUrl = mediaUrl(item.image);
+    const fileUrl = mediaUrl(item.file);
+    const orientation = item.orientation === "landscape" || item.orientation === "square" ? item.orientation : "portrait";
+    return {
+      title: typeof item.title === "string" ? item.title : "",
+      issuer: typeof item.issuer === "string" ? item.issuer : "",
+      owner: typeof item.owner === "string" ? item.owner : null,
+      ownerType: item.ownerType === "personal" ? "personal" : "company",
+      description: typeof item.description === "string" ? item.description : "",
+      orientation,
+      image: imageUrl ? { url: imageUrl } : null,
+      imageAlt: typeof item.imageAlt === "string" ? item.imageAlt : null,
+      file: fileUrl ? { url: fileUrl } : null,
+    };
   });
 }

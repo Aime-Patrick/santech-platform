@@ -1,79 +1,442 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Save, Settings2, MoreHorizontal, ExternalLink, Copy, Trash2, Pencil } from "lucide-react";
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  ExternalLink,
+  Copy,
+  Trash2,
+  Pencil,
+  FileText,
+  Settings2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useCreateWebsiteEntry, useDeleteWebsiteEntry, useUpdateWebsiteEntry, useWebsiteEntries } from "@/features/website-content";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  useCreateWebsiteEntry,
+  useDeleteWebsiteEntry,
+  useWebsiteEntries,
+} from "@/features/website-content";
 
-type WebsiteEntry = { id: string; contentType: string; sourceDocumentId: string; sourceId?: string | null; slug: string | null; title: string | null; status: string; sourceUpdatedAt: string | null; payload: unknown };
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type WebsiteEntry = {
+  id: string;
+  contentType: string;
+  sourceDocumentId: string;
+  sourceId?: string | null;
+  slug: string | null;
+  title: string | null;
+  status: string;
+  sourceUpdatedAt: string | null;
+  payload: unknown;
+};
+
 type PayloadRecord = Record<string, unknown>;
-function payloadOf(entry: WebsiteEntry): PayloadRecord { return entry.payload && typeof entry.payload === "object" && !Array.isArray(entry.payload) ? entry.payload as PayloadRecord : {}; }
-function textField(entry: WebsiteEntry, key: string) { const value = payloadOf(entry)[key]; return value == null ? String.fromCharCode(8212) : String(value); }
 
-function EntryActions({ entry, contentType, onDelete, onDuplicate }: { entry: WebsiteEntry; contentType: string | null; onDelete: (entry: WebsiteEntry) => void; onDuplicate: (entry: WebsiteEntry) => void }) {
-  const [open, setOpen] = React.useState(false);
-  const href = `/dashboard/website-content/${entry.id}?type=${contentType ?? entry.contentType}`;
-  return <div className="relative flex justify-end"><button type="button" aria-label="Entry actions" onClick={() => setOpen((value) => !value)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"><MoreHorizontal className="size-4" /></button>{open ? <div className="absolute right-0 top-8 z-20 w-44 rounded-md border bg-white p-1 text-sm shadow-lg"><Link href={href} className="flex items-center gap-2 rounded px-3 py-2 hover:bg-slate-50"><Pencil className="size-4 text-slate-500" />Edit</Link><a href={href} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded px-3 py-2 hover:bg-slate-50"><ExternalLink className="size-4 text-slate-500" />Open in new tab</a><button type="button" onClick={() => onDuplicate(entry)} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left hover:bg-slate-50"><Copy className="size-4 text-slate-500" />Duplicate</button><button type="button" onClick={() => onDelete(entry)} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-red-600 hover:bg-red-50"><Trash2 className="size-4" />Delete entry</button></div> : null}</div>;
+function payloadOf(entry: WebsiteEntry): PayloadRecord {
+  return entry.payload && typeof entry.payload === "object" && !Array.isArray(entry.payload)
+    ? (entry.payload as PayloadRecord)
+    : {};
 }
 
-function labelForType(type: string | null) { return type ? type.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ") : "Website Content"; }
+function labelForType(type: string | null) {
+  return type
+    ? type.split("-").map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ")
+    : "Website Content";
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// ─── Status Badge ────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "PUBLISHED")
+    return (
+      <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+        Published
+      </span>
+    );
+  if (status === "ARCHIVED")
+    return (
+      <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+        Archived
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+      Draft
+    </span>
+  );
+}
+
+// ─── Row Actions Dropdown ─────────────────────────────────────────────────────
+
+function EntryActions({
+  entry,
+  contentType,
+  openId,
+  setOpenId,
+  onDelete,
+  onDuplicate,
+}: {
+  entry: WebsiteEntry;
+  contentType: string | null;
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+  onDelete: (entry: WebsiteEntry) => void;
+  onDuplicate: (entry: WebsiteEntry) => void;
+}) {
+  const isOpen = openId === entry.id;
+  const href = `/dashboard/website-content/${entry.id}?type=${contentType ?? entry.contentType}`;
+
+  return (
+    <DropdownMenu
+      open={isOpen}
+      onOpenChange={(open) => setOpenId(open ? entry.id : null)}
+    >
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label={`Actions for ${entry.title ?? "entry"}`}
+            className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <MoreHorizontal className="size-4" />
+          </button>
+        }
+      />
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem
+          render={<Link href={href} />}
+          className="gap-2.5 px-3 py-2 text-slate-700"
+        >
+          <Pencil className="size-3.5 text-slate-400" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          render={<a href={href} target="_blank" rel="noreferrer" />}
+          className="gap-2.5 px-3 py-2 text-slate-700"
+        >
+          <ExternalLink className="size-3.5 text-slate-400" />
+          Open in new tab
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => onDuplicate(entry)}
+          className="gap-2.5 px-3 py-2 text-slate-700"
+        >
+          <Copy className="size-3.5 text-slate-400" />
+          Duplicate
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onClick={() => onDelete(entry)}
+          className="gap-2.5 px-3 py-2"
+        >
+          <Trash2 className="size-3.5" />
+          Delete entry
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ─── Empty State ─────────────────────────────────────────────────────────────
+
+function EmptyState({ label, onCreate }: { label: string; onCreate: () => void }) {
+  return (
+    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white">
+      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-slate-100">
+        <FileText className="size-6 text-slate-400" />
+      </div>
+      <p className="text-sm font-medium text-slate-700">No {label.toLowerCase()} entries yet</p>
+      <p className="mt-1 text-xs text-slate-400">Create your first entry to get started.</p>
+      <Button
+        onClick={onCreate}
+        variant="outline"
+        size="sm"
+        className="mt-5 border-[#d9d7ff] text-[#4a45ff] hover:bg-[#f0efff]"
+      >
+        <Plus className="size-3.5" />
+        Create entry
+      </Button>
+    </div>
+  );
+}
+
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
+function TableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="border-b border-slate-100 px-4 py-3">
+        <div className="h-4 w-32 animate-pulse rounded bg-slate-100" />
+      </div>
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center gap-4 border-b border-slate-50 px-4 py-3 last:border-0">
+          <div className="h-3.5 w-48 animate-pulse rounded bg-slate-100" />
+          <div className="h-3.5 w-24 animate-pulse rounded bg-slate-100" />
+          <div className="ml-auto h-5 w-16 animate-pulse rounded-full bg-slate-100" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export function WebsiteContentDashboard() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const contentType = searchParams.get("type");
   const collectionLabel = labelForType(contentType);
+
   const entriesQuery = useWebsiteEntries(contentType);
   const entries = entriesQuery.data?.data ?? [];
   const createMutation = useCreateWebsiteEntry();
-  const updateMutation = useUpdateWebsiteEntry();
   const deleteMutation = useDeleteWebsiteEntry();
+
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("ALL");
-  const [editing, setEditing] = React.useState<WebsiteEntry | null>(null);
-  const [title, setTitle] = React.useState("");
-  const [slug, setSlug] = React.useState("");
-  const [status, setStatus] = React.useState("DRAFT");
-  const [payloadText, setPayloadText] = React.useState("{}");
+  const [openId, setOpenId] = React.useState<string | null>(null);
 
-
+  // ── Filter ──────────────────────────────────────────────────────────────
   const filtered = entries.filter((entry) => {
     if (statusFilter !== "ALL" && entry.status !== statusFilter) return false;
-    return [entry.title ?? "", entry.contentType, entry.slug ?? ""].join(" ").toLowerCase().includes(search.toLowerCase());
+    return [entry.title ?? "", entry.contentType, entry.slug ?? ""]
+      .join(" ")
+      .toLowerCase()
+      .includes(search.toLowerCase());
   });
 
-  function openEditor(entry?: WebsiteEntry) {
-    setEditing(entry ?? { id: "", contentType: contentType ?? "", sourceDocumentId: "", slug: null, title: "", status: "DRAFT", sourceUpdatedAt: null, payload: {} });
-    setTitle(entry?.title ?? ""); setSlug(entry?.slug ?? ""); setStatus(entry?.status ?? "DRAFT"); setPayloadText(JSON.stringify(entry?.payload ?? {}, null, 2));
-  }
-  function saveEntry() {
-    if (!editing || !title.trim()) return;
-    let payload: unknown;
-    try { payload = JSON.parse(payloadText); } catch { window.alert("Content JSON is not valid."); return; }
-    const input = { contentType: editing.contentType, title: title.trim(), slug: slug || null, payload, status };
-    const onSuccess = () => setEditing(null);
-    if (editing.id) updateMutation.mutate({ ...input, id: editing.id }, { onSuccess });
-    else createMutation.mutate(input, { onSuccess });
+  // ── Create new entry → navigate straight to editor ──────────────────────
+  const isSiteSetting = contentType === "site-setting";
+  const isCertificate = contentType === "certificate";
+
+  function handleCreate() {
+    const defaultPayload = isSiteSetting
+      ? {
+          siteName: "SAN TECH",
+          siteTitle: "SAN TECH | Technology. Innovation. Impact.",
+          siteDescription:
+            "SAN TECH builds technology, skills, and innovation systems for a more connected Africa.",
+          homepageVideo: null,
+          homepageVideoPoster: null,
+          eVisitorsVideo: null,
+          eVisitorsVideoPoster: null,
+          logo: null,
+          favicon: null,
+          calendlyUrl: "",
+          companyProfilePdf: null,
+        }
+      : isCertificate
+        ? {
+            title: "New certificate",
+            issuer: "",
+            owner: "SAN TECH",
+            ownerType: "company",
+            description: "",
+            orientation: "portrait",
+            image: null,
+            imageAlt: "",
+            file: null,
+          }
+        : {};
+
+    createMutation.mutate(
+      {
+        contentType: contentType ?? "page",
+        title: isSiteSetting ? "SAN TECH Site Settings" : isCertificate ? "New certificate" : "New entry",
+        slug: isSiteSetting ? "site-settings" : null,
+        payload: defaultPayload,
+        status: isSiteSetting ? "PUBLISHED" : "DRAFT",
+      },
+      {
+        onSuccess(result) {
+          router.push(
+            `/dashboard/website-content/${result.data.id}?type=${contentType ?? "page"}`
+          );
+        },
+      }
+    );
   }
 
-  const dynamicKeys = Array.from(new Set(filtered.flatMap((entry) => Object.keys(payloadOf(entry)).filter((key) => !["id","documentId","createdAt","updatedAt","publishedAt"].includes(key)))));
-  const displayValue = (entry: WebsiteEntry, key: string) => { const value = payloadOf(entry)[key]; if (value == null) return String.fromCharCode(8212); if (typeof value === "object") { const url = (value as { url?: unknown }).url; return url ? String(url) : "Media"; } return String(value); };
-  const renderValue = (entry: WebsiteEntry, key: string) => { const value = payloadOf(entry)[key]; const url = value && typeof value === "object" ? (value as { url?: unknown }).url : typeof value === "string" && /^(https?:\/\/|\/)/.test(value) ? value : null; return url && /image|logo|media|photo|thumbnail/i.test(key) ? <img src={String(url)} alt="" className="size-9 rounded object-contain" /> : <span className="block max-w-[25rem] truncate" title={displayValue(entry,key)}>{displayValue(entry,key)}</span>; };
-  const columns: DataTableColumn<WebsiteEntry>[] = dynamicKeys.map((key) => ({ id: key, header: labelForType(key), cell: (entry) => renderValue(entry, key) }));
-  columns.push({ id: "status", header: "Status", accessorKey: "status", cell: (entry) => <Badge variant={entry.status === "PUBLISHED" ? "default" : "secondary"}>{entry.status}</Badge> });
-  columns.push({ id: "actions", header: "", cell: (entry) => <EntryActions entry={entry} contentType={contentType} onDelete={(item) => { if (window.confirm("Delete this entry?")) deleteMutation.mutate(item.id); }} onDuplicate={(item) => createMutation.mutate({ contentType: item.contentType, title: "Copy of " + (item.title || "entry"), slug: item.slug ? item.slug + "-copy" : null, payload: item.payload })} /> });
-  return <section className="min-h-full space-y-8 px-1 pb-10">
-    <header className="flex items-start justify-between gap-6"><div><h1 className="text-3xl font-medium tracking-tight text-[#1f2c55]">{collectionLabel}</h1><p className="mt-4 text-base text-[#536184]">{entriesQuery.isLoading ? "Loading entries..." : filtered.length + " entries found"}</p></div><Button onClick={() => openEditor()} className="bg-[#4a45ff] hover:bg-[#3934db]"><Plus className="size-4" /> Create new entry</Button></header>
-    <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" className="h-9 w-52 bg-white pl-9" /></div><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 rounded-md border bg-white px-3 text-sm"><option value="ALL">Filters</option><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></div><Button variant="outline" size="icon" aria-label="Collection settings"><Settings2 className="size-4 text-slate-500" /></Button></div>
-    {filtered.length ? <DataTable columns={columns} data={filtered} getRowId={(entry) => entry.id} emptyMessage="No content found" /> : <div className="flex min-h-[350px] flex-col items-center justify-center rounded-md border bg-white shadow-sm"><img src="/empty-documents.svg" alt="" aria-hidden="true" className="mb-5 h-[121px] w-[217px] object-contain" /><p className="text-lg text-[#536184]">No content found</p><Button variant="outline" onClick={() => openEditor()} className="mt-5 border-[#d9d7ff] text-[#4a45ff]"><Plus className="size-4" /> Create new entry</Button></div>}
-    <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) setEditing(null); }}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{editing?.id ? "Edit entry" : "Create new entry"}</DialogTitle><DialogDescription>{collectionLabel} · save a draft or publish this entry.</DialogDescription></DialogHeader><div className="grid gap-4"><label className="grid gap-2 text-sm font-medium">Title<input value={title} onChange={(event) => setTitle(event.target.value)} className="h-10 rounded-md border bg-background px-3" /></label><label className="grid gap-2 text-sm font-medium">Slug<input value={slug} onChange={(event) => setSlug(event.target.value)} className="h-10 rounded-md border bg-background px-3" /></label><label className="grid gap-2 text-sm font-medium">Content JSON<Textarea value={payloadText} onChange={(event) => setPayloadText(event.target.value)} className="min-h-[300px] font-mono text-xs" /></label>{editing?.id ? <label className="grid gap-2 text-sm font-medium">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 rounded-md border bg-background px-3"><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></label> : null}</div><DialogFooter><Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button onClick={saveEntry} disabled={createMutation.isPending || updateMutation.isPending || !title.trim()}><Save className="size-4" /> {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Save entry"}</Button></DialogFooter></DialogContent></Dialog>
-  </section>;
+  // ── Duplicate ────────────────────────────────────────────────────────────
+  function handleDuplicate(entry: WebsiteEntry) {
+    createMutation.mutate(
+      {
+        contentType: entry.contentType,
+        title: "Copy of " + (entry.title ?? "entry"),
+        slug: entry.slug ? entry.slug + "-copy" : null,
+        payload: entry.payload,
+        status: "DRAFT",
+      },
+      {
+        onSuccess(result) {
+          router.push(
+            `/dashboard/website-content/${result.data.id}?type=${entry.contentType}`
+          );
+        },
+      }
+    );
+  }
+
+  // ── Delete ───────────────────────────────────────────────────────────────
+  function handleDelete(entry: WebsiteEntry) {
+    if (!window.confirm(`Delete "${entry.title ?? "this entry"}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(entry.id);
+  }
+
+  // ── Columns ──────────────────────────────────────────────────────────────
+  const columns: DataTableColumn<WebsiteEntry>[] = [
+    {
+      id: "title",
+      header: "Title",
+      accessorKey: "title",
+      cell: (entry) => (
+        <Link
+          href={`/dashboard/website-content/${entry.id}?type=${contentType ?? entry.contentType}`}
+          className="font-medium text-slate-900 hover:text-[#4a45ff]"
+        >
+          {entry.title ?? <span className="italic text-slate-400">Untitled</span>}
+        </Link>
+      ),
+    },
+    {
+      id: "slug",
+      header: "Slug",
+      accessorKey: "slug",
+      cell: (entry) => (
+        <span className="font-mono text-xs text-slate-500">{entry.slug ?? "—"}</span>
+      ),
+    },
+    {
+      id: "updatedAt",
+      header: "Last updated",
+      accessorKey: "sourceUpdatedAt",
+      cell: (entry) => (
+        <span className="text-sm text-slate-500">{formatDate(entry.sourceUpdatedAt)}</span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      accessorKey: "status",
+      cell: (entry) => <StatusBadge status={entry.status} />,
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: (entry) => (
+        <EntryActions
+          entry={entry}
+          contentType={contentType}
+          openId={openId}
+          setOpenId={setOpenId}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
+        />
+      ),
+    },
+  ];
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  return (
+    <section className="min-h-full space-y-6 pb-10">
+      {/* Header */}
+      <header className="flex items-start justify-between gap-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1f2c55]">
+            {collectionLabel}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {entriesQuery.isLoading
+              ? "Loading…"
+              : `${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}`}
+          </p>
+        </div>
+
+        <Button
+          onClick={handleCreate}
+          disabled={createMutation.isPending}
+          className="bg-[#4a45ff] text-white shadow-sm hover:bg-[#3934db] disabled:opacity-60"
+        >
+          <Plus className="size-4" />
+          {createMutation.isPending ? "Creating…" : "New entry"}
+        </Button>
+      </header>
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search entries…"
+            className="h-9 w-56 rounded-lg border-slate-200 bg-white pl-9 text-sm placeholder:text-slate-400 focus-visible:ring-[#4a45ff]/30"
+          />
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4a45ff]/30"
+        >
+          <option value="ALL">All statuses</option>
+          <option value="DRAFT">Draft</option>
+          <option value="PUBLISHED">Published</option>
+          <option value="ARCHIVED">Archived</option>
+        </select>
+
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Collection settings"
+            className="size-9 rounded-lg border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+          >
+            <Settings2 className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Table / skeleton / empty */}
+      {entriesQuery.isLoading ? (
+        <TableSkeleton />
+      ) : filtered.length > 0 ? (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <DataTable
+            columns={columns}
+            data={filtered}
+            getRowId={(entry) => entry.id}
+            emptyMessage="No content found"
+          />
+        </div>
+      ) : (
+        <EmptyState label={collectionLabel} onCreate={handleCreate} />
+      )}
+    </section>
+  );
 }
-
-

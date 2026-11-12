@@ -6,8 +6,6 @@ import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeftToLine,
-  ArrowRightToLine,
   Award,
   BookOpen,
   Calendar,
@@ -22,7 +20,6 @@ import {
   Images,
   Home,
   Layers,
-  LogOut,
   MessageSquare,
   PieChart,
   Search,
@@ -37,15 +34,6 @@ import {
   Users,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -56,18 +44,17 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { useLogout } from "@/features/auth";
 import { useAssets } from "@/features/website-content";
+import { useDashboardHeaderActions } from "@/components/layout/dashboard-header";
+import type { SidebarAnalyticsHighlights } from "@/lib/services/sidebar-analytics-service";
 
 export type AppSidebarProps = {
   permissions: string[];
-  userName: string;
-  roles: string[];
   isLearner: boolean;
   isAdministrator: boolean;
   learnerTracks: Array<{ id: string; title: string }>;
+  analyticsHighlights: SidebarAnalyticsHighlights | null;
 };
 
 export type SidebarSection =
@@ -130,7 +117,8 @@ export function getSectionFromPath(pathname: string): SidebarSection {
   }
   if (
     pathname.startsWith("/dashboard/users") ||
-    pathname.startsWith("/dashboard/applications")
+    pathname.startsWith("/dashboard/applications") ||
+    pathname.startsWith("/dashboard/application-review")
   ) {
     return "users";
   }
@@ -158,11 +146,10 @@ export function getSectionFromPath(pathname: string): SidebarSection {
 
 export function AppSidebar({
   permissions = [],
-  userName,
-  roles,
   isLearner,
   isAdministrator,
   learnerTracks,
+  analyticsHighlights,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -209,10 +196,43 @@ export function AppSidebar({
   const [panelOpen, setPanelOpen] = React.useState<boolean>(
     currentPathSection !== null,
   );
+  const { registerSidebarActions } = useDashboardHeaderActions();
+
+  React.useEffect(() => {
+    registerSidebarActions(
+      {
+        togglePanel: () => setPanelOpen((open) => !open),
+        openSearch: () => {
+          setActiveSection("search");
+          setPanelOpen(true);
+        },
+      },
+      activeSection !== null,
+    );
+
+    return () => registerSidebarActions(null, false);
+  }, [activeSection, registerSidebarActions]);
 
   // Search input state inside search panel
   const [searchQuery, setSearchQuery] = React.useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const [contentSearch, setContentSearch] = React.useState("");
+
+  React.useEffect(() => {
+    const handleSearchShortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") {
+        return;
+      }
+
+      event.preventDefault();
+      setActiveSection("search");
+      setPanelOpen(true);
+      window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    };
+
+    window.addEventListener("keydown", handleSearchShortcut);
+    return () => window.removeEventListener("keydown", handleSearchShortcut);
+  }, []);
   const filteredContentTypes = React.useMemo(
     () =>
       websiteContentTypes.filter((type) =>
@@ -255,22 +275,6 @@ export function AppSidebar({
     }
   }, [pathname]);
 
-  const initials =
-    userName
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((n) => n[0]?.toUpperCase())
-      .join("") || "RF";
-
-  const logoutMutation = useLogout();
-  const onLogout = () =>
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        if (routerReadyRef.current) router.replace("/login");
-      },
-    });
-
   const handleRailClick = (section: SidebarSection, defaultRoute?: string) => {
     if (section === null) {
       // Home
@@ -298,34 +302,12 @@ export function AppSidebar({
     <motion.aside
       animate={{ width: panelOpen ? 320 : 68 }}
       transition={{ duration: 0.22, ease: "easeInOut" }}
-      className="relative flex shrink-0 select-none"
+      className="platform-sidebar relative flex shrink-0 select-none"
     >
-      {/* ------------------------------------------------------------- */}
-      {/* FLOATING COLLAPSE / EXPAND BUTTON (Straddles outer border)    */}
-      {/* ------------------------------------------------------------- */}
-      <motion.button
-        type="button"
-        initial={false}
-        animate={{ left: panelOpen ? 320 : 68 }}
-        transition={{ duration: 0.22, ease: "easeInOut" }}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.92 }}
-        onClick={() => setPanelOpen(!panelOpen)}
-        aria-label={panelOpen ? "Collapse panel" : "Expand panel"}
-        title={panelOpen ? "Collapse sidebar" : "Expand sidebar"}
-        className="absolute top-4 z-40 flex size-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-gray-200/90 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
-      >
-        {panelOpen ? (
-          <ArrowLeftToLine className="size-3" strokeWidth={2.2} />
-        ) : (
-          <ArrowRightToLine className="size-3" strokeWidth={2.2} />
-        )}
-      </motion.button>
-
       {/* ------------------------------------------------------------- */}
       {/* PANEL 1: PRIMARY ICON RAIL (68px)                             */}
       {/* ------------------------------------------------------------- */}
-      <div className="sticky top-0 z-30 flex h-svh w-[68px] shrink-0 flex-col items-center justify-between border-r border-[#eef0f4] bg-white py-4 shadow-[1px_0_0_0_#f1f3f6]">
+      <div className="sticky top-0 z-30 flex h-svh w-[68px] shrink-0 flex-col items-center justify-between border-r border-white/10 bg-[#0a1f44] py-4 shadow-none">
         {/* Top: Logo */}
         <div className="flex flex-col items-center">
           <Link
@@ -342,7 +324,7 @@ export function AppSidebar({
               alt="SAN TECH"
               width={38}
               height={35}
-              className="size-9 object-contain"
+              className="size-9 object-contain brightness-0 invert"
               priority
             />
           </Link>
@@ -626,54 +608,6 @@ export function AppSidebar({
           </nav>
         </div>
 
-        {/* Bottom Rail Actions */}
-        <div className="flex flex-col items-center gap-3">
-          {/* User Profile Avatar with Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="User profile"
-                  className="mt-1 flex cursor-pointer items-center justify-center rounded-full transition-transform hover:ring-2 hover:ring-[#0a1f44]/30 active:scale-95"
-                />
-              }
-            >
-              <Avatar
-                size="sm"
-                className="size-9 bg-[#0a1f44] text-[12px] font-bold text-white shadow-xs"
-              >
-                <AvatarFallback className="bg-transparent text-[12px] font-bold text-white">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="right"
-              align="end"
-              className="w-56 p-1.5 shadow-lg"
-            >
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="px-2 py-2">
-                  <span className="block truncate text-sm font-semibold text-slate-900">
-                    {userName}
-                  </span>
-                  <span className="mt-0.5 block truncate text-xs font-normal text-slate-500">
-                    {roles.join(" \u00b7 ") || "Member"}
-                  </span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={onLogout}
-                  className="cursor-pointer px-2 py-2 text-rose-600 focus:bg-rose-50 focus:text-rose-600"
-                >
-                  <LogOut className="mr-2 size-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -687,7 +621,7 @@ export function AppSidebar({
             animate={{ width: 252, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeInOut" }}
-            className="sticky top-0 z-20 flex h-svh shrink-0 flex-col justify-between overflow-hidden border-r border-[#eef0f4] bg-[#fbfcfd] shadow-[1px_0_0_0_#f4f5f7]"
+            className="sticky top-0 z-20 flex h-svh shrink-0 flex-col justify-between overflow-hidden border-r border-white/10 bg-[#0a1f44] shadow-none"
           >
             <div className="flex h-full w-[252px] flex-col justify-between">
               {/* SECTION 0: REPORTS PANEL (Exact Match to Reference Screenshot) */}
@@ -1020,8 +954,8 @@ export function AppSidebar({
                         className="h-9 rounded-md border-slate-200 bg-white pl-8 text-sm"
                       />
                     </div>
-                    <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                      Collection types{" "}
+                    <div className="mb-2 px-3 text-xs font-semibold tracking-wide text-slate-400">
+                      Collections{" "}
                       <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">
                         {websiteContentTypes.length}
                       </span>
@@ -1041,9 +975,8 @@ export function AppSidebar({
                               ? ""
                               : undefined
                           }
-                          className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#eef0ff] data-active:font-semibold data-active:text-[#4038c9]"
+                          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#eef0ff] data-active:font-semibold data-active:text-[#4038c9]"
                         >
-                          <span className="text-[10px]">•</span>
                           <span>{contentTypeLabel(type)}</span>
                         </Link>
                       ))}
@@ -1100,7 +1033,7 @@ export function AppSidebar({
                       <Home className="size-4" strokeWidth={1.8} />
                       <span>Home</span>
                     </Link>
-                    <div className="mt-6 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <div className="mt-6 px-3 text-xs font-semibold tracking-wide text-slate-400">
                       Folders
                     </div>
                     <nav aria-label="Media folders" className="mt-1 space-y-1">
@@ -1214,58 +1147,85 @@ export function AppSidebar({
                         />
                         <span>Attendance Logs</span>
                       </Link>
-                      <Link
-                        href="/dashboard/enrollments"
-                        data-active={
-                          pathname === "/dashboard/enrollments" ? "" : undefined
-                        }
-                        className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
-                      >
-                        <TrendingUp
-                          className="size-4 text-slate-500"
-                          strokeWidth={1.8}
-                        />
-                        <span>Completion Rates</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/courses"
-                        className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900"
-                      >
-                        <PieChart
-                          className="size-4 text-slate-500"
-                          strokeWidth={1.8}
-                        />
-                        <span>Assessment Scores</span>
-                      </Link>
+                      {can("enrollments.review") ? (
+                        <Link
+                          href="/dashboard/reports/completion-rates"
+                          data-active={pathname.startsWith("/dashboard/reports/completion-rates") ? "" : undefined}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
+                        >
+                          <TrendingUp className="size-4 text-slate-500" strokeWidth={1.8} />
+                          <span>Completion Rates</span>
+                        </Link>
+                      ) : null}
+                      {can("grades.view") ? (
+                        <Link
+                          href="/dashboard/reports/assessment-scores"
+                          data-active={pathname.startsWith("/dashboard/reports/assessment-scores") ? "" : undefined}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
+                        >
+                          <PieChart className="size-4 text-slate-500" strokeWidth={1.8} />
+                          <span>Assessment Scores</span>
+                        </Link>
+                      ) : null}
                     </nav>
 
-                    <div className="mt-5 space-y-2 px-1">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        Live Highlights
-                      </p>
-                      <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-none">
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>Average Attendance</span>
-                          <span className="font-bold text-emerald-600">
-                            92.4%
-                          </span>
-                        </div>
-                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full w-[92%] rounded-full bg-emerald-500" />
-                        </div>
+                    {can("attendance.view") || can("grades.view") ? (
+                      <div className="mt-6 space-y-4 px-3">
+                        <p className="text-xs font-semibold tracking-wide text-slate-300">
+                          Live highlights
+                        </p>
+                        {can("attendance.view") ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3 text-xs">
+                              <span className="text-slate-300">Average Attendance</span>
+                              <span className="font-bold text-emerald-400">
+                                {analyticsHighlights?.averageAttendance == null
+                                  ? "No data"
+                                  : `${analyticsHighlights.averageAttendance}%`}
+                              </span>
+                            </div>
+                            <div
+                              role="progressbar"
+                              aria-label="Average attendance"
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={analyticsHighlights?.averageAttendance ?? 0}
+                              className="h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+                            >
+                              <div
+                                className="h-full rounded-full bg-emerald-500 transition-[width]"
+                                style={{ width: `${analyticsHighlights?.averageAttendance ?? 0}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                        {can("grades.view") ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3 text-xs">
+                              <span className="text-slate-300">Average lesson score</span>
+                              <span className="font-bold text-cyan-300">
+                                {analyticsHighlights?.averageScore == null
+                                  ? "No data"
+                                  : `${analyticsHighlights.averageScore}%`}
+                              </span>
+                            </div>
+                            <div
+                              role="progressbar"
+                              aria-label="Average lesson score"
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={analyticsHighlights?.averageScore ?? 0}
+                              className="h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+                            >
+                              <div
+                                className="h-full rounded-full bg-[#5b51ef] transition-[width]"
+                                style={{ width: `${analyticsHighlights?.averageScore ?? 0}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-none">
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>Quiz Pass Rate</span>
-                          <span className="font-bold text-[#5b51ef]">
-                            84.0%
-                          </span>
-                        </div>
-                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full w-[84%] rounded-full bg-[#5b51ef]" />
-                        </div>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
 
                   <div className="p-3">
@@ -1294,21 +1254,22 @@ export function AppSidebar({
                     </h2>
                   </div>
 
-                  <div className="flex flex-1 flex-col overflow-y-auto px-3.5 pb-4">
+                  <div className="flex flex-1 flex-col overflow-y-auto px-3.5 pb-4 pt-3">
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+                      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                       <Input
+                        ref={searchInputRef}
                         autoFocus
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search workspace..."
-                        className="h-8 rounded-lg border-gray-200 pl-8 text-xs"
+                        className="h-10 rounded-lg border-gray-200 pl-9 text-sm"
                       />
                     </div>
 
                     <div className="mt-4 space-y-1">
-                      <p className="px-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                        Quick Jump
+                      <p className="px-2 text-xs font-semibold tracking-wide text-slate-400">
+                        Quick links
                       </p>
                       <Link
                         href="/dashboard/courses"
@@ -1349,7 +1310,7 @@ export function AppSidebar({
                     <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-3 text-[11px] text-slate-500">
                       Press{" "}
                       <kbd className="rounded border bg-white px-1 font-mono text-[10px]">
-                        Ctrl
+                        Ctrl / ⌘
                       </kbd>{" "}
                       +{" "}
                       <kbd className="rounded border bg-white px-1 font-mono text-[10px]">
@@ -1375,6 +1336,22 @@ export function AppSidebar({
                       aria-label="Settings Quick Links"
                       className="space-y-1"
                     >
+                      <Link
+                        href="/dashboard/website-content?type=site-setting"
+                        data-active={
+                          pathname.startsWith("/dashboard/website-content") &&
+                          new URLSearchParams(searchParams.toString()).get("type") === "site-setting"
+                            ? ""
+                            : undefined
+                        }
+                        className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 data-active:bg-[#f0f2f5] data-active:font-semibold data-active:text-slate-900"
+                      >
+                        <Globe
+                          className="size-4 text-slate-500"
+                          strokeWidth={1.8}
+                        />
+                        <span>Site Settings</span>
+                      </Link>
                       <Link
                         href="/dashboard/roles"
                         data-active={

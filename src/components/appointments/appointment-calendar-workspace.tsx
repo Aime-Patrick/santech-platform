@@ -24,7 +24,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  List,
   Plus,
+  Search,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +37,7 @@ import { useAppointmentCalendar } from "@/features/appointments/hooks/use-appoin
 import { useAdminAppointments, useCreateAdminAppointment } from "@/features/appointments/hooks/use-appointments";
 import type { AppointmentCalendarEvent } from "@/features/appointments/api/get-appointment-calendar";
 
-type CalendarView = "day" | "week" | "month";
+type CalendarView = "day" | "week" | "month" | "list";
 type AvailabilityDay = {
   day: string;
   weekday: number;
@@ -108,11 +110,12 @@ function CalendarToolbar(props: {
   };
 
   return (
-    <div className="flex flex-col gap-4 border-b border-slate-200 bg-white px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-3 py-3 sm:px-5 sm:py-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         <Button
           variant="outline"
-          className="rounded-full px-5"
+          size="sm"
+          className="shrink-0 rounded-full px-4"
           onClick={() => props.onAnchorChange(new Date())}
         >
           Today
@@ -121,6 +124,7 @@ function CalendarToolbar(props: {
           variant="ghost"
           size="icon"
           aria-label="Previous period"
+          className="size-9 shrink-0"
           onClick={() => move(-1)}
         >
           <ChevronLeft className="size-5" />
@@ -129,31 +133,89 @@ function CalendarToolbar(props: {
           variant="ghost"
           size="icon"
           aria-label="Next period"
+          className="size-9 shrink-0"
           onClick={() => move(1)}
         >
           <ChevronRight className="size-5" />
         </Button>
-        <h2 className="truncate pl-2 text-lg font-semibold text-slate-950 sm:text-xl">
+        <h2 className="min-w-0 truncate pl-1 text-base font-semibold text-slate-950 sm:pl-2 sm:text-xl">
           {title}
         </h2>
       </div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-          {(["day", "week", "month"] as const).map((item) => (
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="flex max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-1">
+          {(["day", "week", "month", "list"] as const).map((item) => (
             <button
               key={item}
               type="button"
+              aria-pressed={props.view === item}
               onClick={() => props.onViewChange(item)}
-              className={`rounded-md px-4 py-2 text-sm font-medium capitalize transition-colors ${props.view === item ? "bg-white text-indigo-700 shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
+              className={`min-h-9 rounded-md px-3 text-sm font-medium capitalize transition-colors sm:px-4 ${props.view === item ? "bg-white text-indigo-700 shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
             >
               {item}
             </button>
           ))}
         </div>
-        <Button onClick={props.onCreate}>
+        <Button onClick={props.onCreate} className="min-h-10 flex-1 sm:flex-none">
           <Plus className="size-4" /> New schedule
         </Button>
       </div>
+    </div>
+  );
+}
+
+function BookingList({ events }: { events: AppointmentCalendarEvent[] }) {
+  const sortedEvents = [...events].sort(
+    (left, right) =>
+      new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+  );
+
+  if (sortedEvents.length === 0) {
+    return (
+      <div className="grid min-h-64 place-items-center bg-white px-5 py-12 text-center">
+        <div>
+          <div className="mx-auto mb-3 grid size-11 place-items-center rounded-full bg-indigo-50 text-indigo-600">
+            <CalendarDays className="size-5" aria-hidden="true" />
+          </div>
+          <p className="font-semibold text-slate-900">No bookings match this view</p>
+          <p className="mt-1 text-sm text-slate-500">Try another date or clear your search and filters.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-slate-100 bg-white">
+      {sortedEvents.map((event) => {
+        const start = new Date(event.startsAt);
+        const end = new Date(event.endsAt);
+        const isCancelled = event.status === "CANCELLED";
+        return (
+          <article
+            key={event.id}
+            className="grid gap-3 px-4 py-4 transition-colors hover:bg-slate-50/70 sm:grid-cols-[minmax(9rem,0.8fr)_minmax(12rem,1.2fr)_minmax(12rem,1.2fr)_auto] sm:items-center sm:px-5"
+          >
+            <div className="flex items-center gap-3 sm:block">
+              <span className={`size-2.5 shrink-0 rounded-full ${isCancelled ? "bg-slate-300" : "bg-indigo-600"}`} />
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{format(start, "EEE, MMM d")}</p>
+                <p className="mt-0.5 text-sm text-slate-500">{format(start, "h:mm a")} – {format(end, "h:mm a")}</p>
+              </div>
+            </div>
+            <div className="min-w-0 pl-5 sm:pl-0">
+              <p className="truncate text-sm font-semibold text-slate-900">{event.appointmentType.title}</p>
+              <p className="mt-0.5 text-xs text-slate-500">Appointment</p>
+            </div>
+            <div className="min-w-0 pl-5 sm:pl-0">
+              <p className="truncate text-sm text-slate-800">{event.attendeeName}</p>
+              <p className="truncate text-xs text-slate-500">{event.attendeeEmail}</p>
+            </div>
+            <span className={`ml-5 w-fit rounded-full px-2.5 py-1 text-xs font-medium sm:ml-0 ${isCancelled ? "bg-slate-100 text-slate-600" : "bg-indigo-50 text-indigo-700"}`}>
+              {isCancelled ? "Cancelled" : "Confirmed"}
+            </span>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -176,6 +238,7 @@ function EventBlock({
   if (!isSameDay(startsAt, day)) return null;
   const startMinutes = startsAt.getHours() * 60 + startsAt.getMinutes();
   const endMinutes = endsAt.getHours() * 60 + endsAt.getMinutes();
+  const isCancelled = event.status === "CANCELLED";
   const top = ((startMinutes - hourStart * 60) / 60) * hourHeight;
   const height = Math.max(((endMinutes - startMinutes) / 60) * hourHeight, 34);
   if (top < 0 || top >= (hourEnd - hourStart) * hourHeight) return null;
@@ -183,7 +246,7 @@ function EventBlock({
     <button
       type="button"
       title={`${event.appointmentType.title} with ${event.attendeeName}`}
-      className="absolute inset-x-1 z-20 overflow-hidden rounded-md border-l-4 border-indigo-600 bg-indigo-100 px-2 py-1 text-left text-xs text-indigo-950 shadow-sm hover:bg-indigo-200"
+      className={`absolute inset-x-1 z-20 overflow-hidden rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm ${isCancelled ? "border-slate-400 bg-slate-100 text-slate-700 hover:bg-slate-200" : "border-indigo-600 bg-indigo-100 text-indigo-950 hover:bg-indigo-200"}`}
       style={{ top, height }}
     >
       <span className="block truncate font-semibold">
@@ -565,7 +628,7 @@ function MonthGrid(props: {
                 {events.slice(0, 3).map((event) => (
                   <div
                     key={event.id}
-                    className="truncate rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-900"
+                    className={`truncate rounded px-2 py-1 text-xs ${event.status === "CANCELLED" ? "bg-slate-100 text-slate-600" : "bg-indigo-100 text-indigo-900"}`}
                   >
                     <span className="font-semibold">
                       {format(new Date(event.startsAt), "h:mm a")}
@@ -633,8 +696,7 @@ function ScheduleDialog(props: {
         item.weekday === weekday ? { ...item, ...patch } : item,
       ),
     );
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const createSchedule = (status: "DRAFT" | "PUBLISHED") => {
     const resolvedSlug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -646,6 +708,7 @@ function ScheduleDialog(props: {
         description,
         durationMinutes: Number(duration),
         timezone,
+        status,
         availability: availability
           .filter((item) => item.enabled)
           .map((item) => ({
@@ -671,6 +734,10 @@ function ScheduleDialog(props: {
           ),
       },
     );
+  };
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    createSchedule("DRAFT");
   };
 
   React.useEffect(() => {
@@ -840,8 +907,11 @@ function ScheduleDialog(props: {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={mutation.isPending}>
+          <Button type="submit" variant="outline" disabled={mutation.isPending}>
             {mutation.isPending ? "Creating…" : "Create draft"}
+          </Button>
+          <Button type="button" disabled={mutation.isPending} onClick={() => createSchedule("PUBLISHED")}>
+            {mutation.isPending ? "Creating…" : "Create booking link"}
           </Button>
           </div>
         </form>
@@ -854,6 +924,8 @@ function ScheduleDialog(props: {
 export function AppointmentCalendarWorkspace() {
   const [view, setView] = React.useState<CalendarView>("week");
   const [anchor, setAnchor] = React.useState(() => new Date());
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<"ALL" | "CONFIRMED" | "CANCELLED">("ALL");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [initialRange, setInitialRange] = React.useState<{
     start: Date;
@@ -874,6 +946,17 @@ export function AppointmentCalendarWorkspace() {
     () => getVisibleDays(anchor, view === "day" ? "day" : "week"),
     [anchor, view],
   );
+  const visibleEvents = React.useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return (query.data?.data ?? []).filter((event) => {
+      const matchesStatus = statusFilter === "ALL" || event.status === statusFilter;
+      const matchesSearch =
+        !normalizedSearch ||
+        [event.appointmentType.title, event.attendeeName, event.attendeeEmail]
+          .some((value) => value.toLowerCase().includes(normalizedSearch));
+      return matchesStatus && matchesSearch;
+    });
+  }, [query.data?.data, search, statusFilter]);
   const createRange = (range: {
     start: Date;
     end: Date;
@@ -888,23 +971,21 @@ export function AppointmentCalendarWorkspace() {
   };
 
   return (
-    <main className="min-h-full p-4 text-[#0a1f44]">
-      <div className="mx-auto max-w-[1600px]">
-        <div className="mb-5 flex items-end justify-between gap-4">
+    <section className="mx-auto w-full max-w-[1600px] space-y-5 text-[#0a1f44]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="mt-1 text-3xl font-semibold text-slate-950">
+            <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">
               Appointments
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Review bookings and create availability directly from the
-              calendar.
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              Review bookings and manage availability from one calendar.
             </p>
           </div>
-          <div className="hidden items-center gap-2 text-sm text-slate-500 md:flex">
+          <div className="flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
             <Clock3 className="size-4" /> Africa/Kigali
           </div>
         </div>
-        <section className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+        <section aria-label="Appointment calendar" className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <CalendarToolbar
             anchor={anchor}
             view={view}
@@ -912,24 +993,52 @@ export function AppointmentCalendarWorkspace() {
             onViewChange={setView}
             onCreate={() => createRange(null)}
           />
+          <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:px-5">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <Input
+                aria-label="Search appointments"
+                placeholder="Search by attendee or schedule..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="h-10 border-slate-200 pl-9 text-sm focus-visible:ring-indigo-500/30"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="appointment-status-filter" className="shrink-0 text-sm text-slate-500">Status</label>
+              <select
+                id="appointment-status-filter"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+                className="h-10 min-w-36 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="ALL">All bookings</option>
+                <option value="CONFIRMED">Confirmed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+          </div>
           {query.isError ? (
-            <div className="m-4 rounded-lg bg-rose-50 p-4 text-sm text-rose-700">
+            <div role="alert" className="m-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
               {query.error instanceof Error
                 ? query.error.message
                 : "Unable to load calendar"}
             </div>
           ) : null}
-          <div className="max-h-[calc(100vh-250px)] min-h-[600px] overflow-auto">
+          <div className="relative">
+          <div className="calendar-scroll-area h-[clamp(22rem,68svh,42.5rem)] min-h-0 overflow-auto">
             {view === "month" ? (
               <MonthGrid
                 anchor={anchor}
-                events={query.data?.data ?? []}
+                events={visibleEvents}
                 onSelectDay={selectMonthDay}
               />
+            ) : view === "list" ? (
+              <BookingList events={visibleEvents} />
             ) : (
               <TimeGrid
                 days={days}
-                events={query.data?.data ?? []}
+                events={visibleEvents}
                 availability={availability}
                 onSelectRange={(start, end, selectedDays) =>
                   createRange({ start, end, days: selectedDays })
@@ -938,25 +1047,19 @@ export function AppointmentCalendarWorkspace() {
             )}
           </div>
           {query.isLoading ? (
-            <div className="pointer-events-none absolute inset-0 grid place-items-center bg-white/30">
-              <span className="rounded-full bg-white px-4 py-2 text-sm shadow">
+            <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-white/55">
+              <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
                 Loading calendar…
               </span>
             </div>
           ) : null}
+          </div>
         </section>
-        <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-          <CalendarDays className="size-4" /> Click, or press and drag — across
-          hours or days — to select a time range and create availability. The
-          calendar follows your pointer near the edges. Bookings appear
-          automatically when guests reserve a slot.
-        </p>
-      </div>
       <ScheduleDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initialRange={initialRange}
       />
-    </main>
+    </section>
   );
 }

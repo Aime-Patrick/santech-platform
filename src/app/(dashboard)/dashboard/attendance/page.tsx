@@ -22,18 +22,20 @@ export default async function AttendancePage() {
         description="Review your attendance history across cohorts and learning sessions."
       />
 
-      <Card className="overflow-hidden p-0">
-        <div className="divide-y divide-slate-100">
-          {records.length === 0 ? (
-            <div className="p-6">
-              <CircleAlert className="size-6 text-[#00a3e0]" />
-              <h2 className="mt-3 font-bold text-[#0a1f44]">No attendance records yet.</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Attendance will appear after an instructor records your first session.
-              </p>
-            </div>
-          ) : (
-            records.map((record: AttendanceRecord) => {
+      {records.length === 0 ? (
+        <div className="flex min-h-36 flex-col items-center justify-center px-6 py-8 text-center">
+          <div className="mb-3 grid size-10 place-items-center rounded-full bg-sky-50 text-[#00a3e0]">
+            <CircleAlert className="size-5" aria-hidden="true" />
+          </div>
+          <h2 className="font-semibold text-[#0a1f44]">No attendance records yet.</h2>
+          <p className="mt-1 max-w-lg text-sm text-slate-500">
+            Attendance will appear after an instructor records your first session.
+          </p>
+        </div>
+      ) : (
+        <Card className="overflow-hidden p-0">
+          <div className="divide-y divide-slate-100">
+            {records.map((record: AttendanceRecord) => {
               const present = record.status === "PRESENT";
               const late = record.status === "LATE";
               return (
@@ -74,10 +76,10 @@ export default async function AttendancePage() {
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
-      </Card>
+            })}
+          </div>
+        </Card>
+      )}
     </section>
   );
 }

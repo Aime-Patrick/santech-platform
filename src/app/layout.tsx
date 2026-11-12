@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
+import { Exo_2, Inter } from "next/font/google";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const exo = Exo_2({
+  subsets: ["latin"],
+  variable: "--font-exo",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -18,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`${inter.variable} ${exo.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
         <QueryProvider><TooltipProvider>{children}</TooltipProvider></QueryProvider>
       </body>

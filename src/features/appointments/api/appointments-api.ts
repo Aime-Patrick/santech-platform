@@ -7,4 +7,5 @@ export const createPublicBooking = (slug: string, body: { startsAt: string; atte
 
 export type AdminAppointment = { id: string; slug: string; title: string; status: string; durationMinutes: number; timezone: string; availability: Array<{ weekday: number; startMinute: number; endMinute: number }>; _count: { bookings: number } };
 export const getAdminAppointments = () => request<{ data: AdminAppointment[] }>("/api/admin/appointments");
-export const createAdminAppointment = (body: { title: string; slug: string; description?: string; durationMinutes: number; timezone: string; availability: Array<{ weekday: number; startMinute: number; endMinute: number }> }) => request<{ data: AdminAppointment }>("/api/admin/appointments", { method: "POST", body: JSON.stringify(body) });
+export const createAdminAppointment = (body: { title: string; slug: string; description?: string; durationMinutes: number; timezone: string; availability: Array<{ weekday: number; startMinute: number; endMinute: number }>; status?: "DRAFT" | "PUBLISHED" }) => request<{ data: AdminAppointment }>("/api/admin/appointments", { method: "POST", body: JSON.stringify(body) });
+export const publishAdminAppointment = (id: string) => request<{ data: AdminAppointment }>("/api/admin/appointments", { method: "PATCH", body: JSON.stringify({ id, status: "PUBLISHED" }) });

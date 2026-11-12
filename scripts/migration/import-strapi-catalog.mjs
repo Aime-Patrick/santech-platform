@@ -49,7 +49,7 @@ try {
       const existing = await retry(() => prisma.mediaAsset.findFirst({ where: { sourceId: String(file.id) } }), `media lookup ${file.id}`);
       const data = {
         sourceId: String(file.id), sourceDocumentId: file.document_id ?? null, provider: file.provider ?? "cloudinary",
-        publicId, url: file.url, alternativeText: file.alternative_text ?? null,
+        publicId, folderPath: "", url: file.url, alternativeText: file.alternative_text ?? null,
         format: file.ext ? String(file.ext).replace(/^\./, "") : null, width: file.width ?? null, height: file.height ?? null,
       };
       const asset = existing

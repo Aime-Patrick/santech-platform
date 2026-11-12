@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db/prisma";
-const db = prisma as any;
 
 export type AvailabilityInput = { weekday: number; startMinute: number; endMinute: number };
 
@@ -20,15 +19,15 @@ function weekdayFor(date: string, timeZone: string) {
 const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 export async function listAppointmentTypes(hostId?: string) {
-  return db.appointmentType.findMany({ where: hostId ? { hostId } : undefined, include: { availability: true, _count: { select: { bookings: true } } }, orderBy: { createdAt: "desc" } });
+  return prisma.appointmentType.findMany({ where: hostId ? { hostId } : undefined, include: { availability: true, _count: { select: { bookings: true } } }, orderBy: { createdAt: "desc" } });
 }
 
-export async function createAppointmentType(input: { hostId: string; title: string; slug: string; description?: string; durationMinutes: number; timezone: string; locationLabel?: string; locationUrl?: string; availability: AvailabilityInput[] }) {
-  return db.appointmentType.create({ data: { hostId: input.hostId, title: input.title, slug: input.slug, description: input.description, durationMinutes: input.durationMinutes, timezone: input.timezone, locationLabel: input.locationLabel, locationUrl: input.locationUrl, availability: { create: input.availability } }, include: { availability: true } });
+export async function createAppointmentType(input: { hostId: string; title: string; slug: string; description?: string; durationMinutes: number; timezone: string; locationLabel?: string; locationUrl?: string; availability: AvailabilityInput[]; status?: "DRAFT" | "PUBLISHED" }) {
+  return prisma.appointmentType.create({ data: { hostId: input.hostId, title: input.title, slug: input.slug, description: input.description, durationMinutes: input.durationMinutes, timezone: input.timezone, locationLabel: input.locationLabel, locationUrl: input.locationUrl, status: input.status ?? "DRAFT", publishedAt: input.status === "PUBLISHED" ? new Date() : null, availability: { create: input.availability } }, include: { availability: true } });
 }
 
 export async function getPublicAppointment(slug: string) {
-  return db.appointmentType.findFirst({ where: { slug, status: "PUBLISHED" }, include: { availability: true, host: { select: { firstName: true, lastName: true } } } });
+  return prisma.appointmentType.findFirst({ where: { slug, status: "PUBLISHED" }, include: { availability: true } });
 }
 
 export async function getAppointmentSlots(slug: string, fromDate: string, days = 7) {
@@ -36,14 +35,14 @@ export async function getAppointmentSlots(slug: string, fromDate: string, days =
   if (!appointment) return null;
   const now = new Date();
   const slots: Array<{ startsAt: string; endsAt: string; date: string; time: string }> = [];
-  const booked = await db.appointmentBooking.findMany({ where: { appointmentTypeId: appointment.id, status: "CONFIRMED", startsAt: { gte: now } }, select: { startsAt: true } });
-  const bookedTimes = new Set(booked.map((booking: any) => booking.startsAt.toISOString()));
+  const booked = await prisma.appointmentBooking.findMany({ where: { appointmentTypeId: appointment.id, status: "CONFIRMED", startsAt: { gte: now } }, select: { startsAt: true } });
+  const bookedTimes = new Set(booked.map((booking) => booking.startsAt.toISOString()));
   const start = new Date(fromDate + "T12:00:00Z");
   for (let index = 0; index < days; index += 1) {
     const day = new Date(start); day.setUTCDate(day.getUTCDate() + index);
     const date = day.toISOString().slice(0, 10);
     const weekday = weekdayIndex[weekdayFor(date, appointment.timezone)];
-    for (const window of appointment.availability.filter((item: any) => item.weekday === weekday)) {
+    for (const window of appointment.availability.filter((item) => item.weekday === weekday)) {
       for (let minute = window.startMinute; minute + appointment.durationMinutes <= window.endMinute; minute += appointment.durationMinutes) {
         const startsAt = zonedDateToUtc(date, minute, appointment.timezone);
         const endsAt = new Date(startsAt.getTime() + appointment.durationMinutes * 60_000);
@@ -62,5 +61,5 @@ export async function createBooking(input: { slug: string; startsAt: string; att
   if (Number.isNaN(startsAt.getTime()) || startsAt <= new Date()) throw new Error("SLOT_IN_PAST");
   const slots = await getAppointmentSlots(input.slug, startsAt.toISOString().slice(0, 10), 1);
   if (!slots?.slots.some((slot) => slot.startsAt === startsAt.toISOString())) throw new Error("SLOT_UNAVAILABLE");
-  return db.appointmentBooking.create({ data: { appointmentTypeId: appointment.id, startsAt, endsAt: new Date(startsAt.getTime() + appointment.durationMinutes * 60_000), attendeeName: input.attendeeName, attendeeEmail: input.attendeeEmail.toLowerCase(), timezone: input.timezone, notes: input.notes, attendeeId: input.attendeeId } });
+  return prisma.appointmentBooking.create({ data: { appointmentTypeId: appointment.id, startsAt, endsAt: new Date(startsAt.getTime() + appointment.durationMinutes * 60_000), attendeeName: input.attendeeName, attendeeEmail: input.attendeeEmail.toLowerCase(), timezone: input.timezone, notes: input.notes, attendeeId: input.attendeeId } });
 }

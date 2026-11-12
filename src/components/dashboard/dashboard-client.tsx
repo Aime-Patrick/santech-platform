@@ -1,61 +1,38 @@
 ﻿"use client";
 
-import * as React from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { ArrowUpRight, BookOpen, CheckCircle2, GraduationCap, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, ClipboardList, GraduationCap, ShieldCheck, Users } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatCard } from "@/components/shared/stat-card";
 import type { DashboardData } from "@/lib/services/dashboard-service";
 
 const icons = [BookOpen, GraduationCap, CheckCircle2, ShieldCheck, Users];
 const chartConfig = { value: { label: "Records", color: "#5146e5" } } satisfies ChartConfig;
 
-export function DashboardClient({ userName, dashboard }: { userName: string; dashboard: DashboardData }) {
-  const [greeting, setGreeting] = React.useState("Welcome");
-
-  React.useEffect(() => {
-    const hour = new Date().getHours();
-    setGreeting(hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening");
-  }, []);
-
-  const roleLabel = dashboard.roles.length
-    ? dashboard.roles.map((role) => role.replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())).join(" · ")
-    : "Member";
+export function DashboardClient({ dashboard }: { dashboard: DashboardData }) {
   const chartData = dashboard.metrics.map((metric) => ({ name: metric.label, value: metric.value }));
 
   return (
     <div className="relative min-h-full pb-10">
-      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900 sm:text-[30px]">{greeting}, {userName}</h1>
-            <p className="mt-1 text-sm text-slate-500">Your SAN TECH workspace at a glance.</p>
-          </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold capitalize text-slate-600">{roleLabel}</span>
-        </div>
-      </motion.div>
-
       {dashboard.metrics.length > 0 ? (
         <>
-          <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }} className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {dashboard.metrics.map((metric, index) => {
               const Icon = icons[index % icons.length];
               return (
                 <motion.div key={metric.key} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-                  <Card className="border-slate-200/80 bg-white shadow-none ring-0 transition-shadow hover:shadow-sm">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex size-9 items-center justify-center rounded-lg bg-[#eef0ff] text-[#5146e5]"><Icon className="size-4.5" /></div>
-                        <span className="text-2xl font-extrabold tracking-tight text-slate-900">{metric.value}</span>
-                      </div>
-                      <p className="mt-2 truncate text-sm font-bold text-slate-800">{metric.label}</p>
-                      <p className="mt-0.5 truncate text-xs text-slate-500">{metric.detail}</p>
-                      <Link href={metric.href} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#5146e5] hover:underline">Open <ArrowUpRight className="size-3.5" /></Link>
-                    </CardContent>
-                  </Card>
+                  <StatCard
+                    label={metric.label}
+                    value={metric.value}
+                    icon={Icon}
+                    description={metric.detail}
+                    href={metric.href}
+                    className="border-slate-200/80 bg-white shadow-none ring-0 transition-shadow hover:shadow-sm"
+                  />
                 </motion.div>
               );
             })}
@@ -87,9 +64,71 @@ export function DashboardClient({ userName, dashboard }: { userName: string; das
               </CardContent>
             </Card>
           </div>
+
+          {dashboard.permissions.includes("applications.review") ? (
+            <Card className="mt-5 overflow-hidden border-slate-200/80 bg-white shadow-none ring-0">
+              <CardHeader className="flex flex-row items-center justify-between gap-4 px-5 pb-3 pt-5">
+                <div>
+                  <CardTitle className="text-base">Recent applications</CardTitle>
+                  <p className="mt-1 text-sm text-slate-500">Latest submissions waiting for a decision</p>
+                </div>
+                <Link
+                  href="/dashboard/application-review"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-[#5146e5] transition-colors hover:bg-violet-50"
+                >
+                  View all <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </CardHeader>
+              {dashboard.recentApplications.length > 0 ? (
+                <CardContent className="px-0 pb-1 pt-0">
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[680px]">
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                          <TableHead className="h-10 pl-5 text-xs font-semibold uppercase tracking-wide text-slate-500">Applicant</TableHead>
+                          <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Course / program</TableHead>
+                          <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Type</TableHead>
+                          <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Submitted</TableHead>
+                          <TableHead className="h-10 pr-5 text-xs font-semibold uppercase tracking-wide text-slate-500">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dashboard.recentApplications.map((application) => (
+                          <TableRow key={application.id}>
+                            <TableCell className="py-3 pl-5">
+                              <div className="font-medium text-slate-900">{application.applicantName}</div>
+                              <div className="mt-0.5 text-xs text-slate-500">{application.email}</div>
+                            </TableCell>
+                            <TableCell className="max-w-64 truncate py-3 text-sm text-slate-700">{application.courseTitle}</TableCell>
+                            <TableCell className="py-3 text-sm capitalize text-slate-600">{application.type.toLowerCase()}</TableCell>
+                            <TableCell className="py-3 text-sm text-slate-600">
+                              {new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(application.submittedAt))}
+                            </TableCell>
+                            <TableCell className="py-3 pr-5">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${application.status === "UNDER_REVIEW" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                                {application.status === "UNDER_REVIEW" ? "Under review" : "Submitted"}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              ) : (
+                <CardContent className="border-t border-slate-100 py-10 text-center">
+                  <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-full bg-violet-50 text-[#5146e5]">
+                    <ClipboardList className="size-5" aria-hidden="true" />
+                  </div>
+                  <p className="font-medium text-slate-800">No applications are waiting for review</p>
+                  <p className="mt-1 text-sm text-slate-500">New submissions will appear here.</p>
+                </CardContent>
+              )}
+            </Card>
+          ) : null}
         </>
       ) : (
-        <Card className="mt-6 border-slate-200 bg-white shadow-none"><CardContent className="p-8 text-center"><p className="font-semibold text-slate-800">No dashboard metrics are assigned to this role.</p><p className="mt-1 text-sm text-slate-500">Ask an administrator to review your role permissions.</p></CardContent></Card>
+        <Card className="border-slate-200 bg-white shadow-none"><CardContent className="p-8 text-center"><p className="font-semibold text-slate-800">No dashboard metrics are assigned to this role.</p><p className="mt-1 text-sm text-slate-500">Ask an administrator to review your role permissions.</p></CardContent></Card>
       )}
     </div>
   );

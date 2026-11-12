@@ -33,6 +33,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -41,7 +50,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
-  useAssets,
+  useAssetFolders,
+  useCreateAssetFolder,
   useDeleteAsset,
   useInfiniteAssets,
   useUpdateAsset,
@@ -49,7 +59,7 @@ import {
   useMoveAssets,
   useUploadAsset,
 } from "@/features/website-content";
-import type { Asset } from "@/features/website-content/types";
+import type { Asset, AssetFolder } from "@/features/website-content/types";
 
 function isVideo(asset: Asset) {
   return (
@@ -68,6 +78,11 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
   const [search, setSearch] = React.useState("");
   const [view, setView] = React.useState<"grid" | "table">("grid");
   const [newOpen, setNewOpen] = React.useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = React.useState(false);
+  const [newFolderName, setNewFolderName] = React.useState("");
+  const [moveFolderOpen, setMoveFolderOpen] = React.useState(false);
+  const [moveFolder, setMoveFolder] = React.useState(folder);
+  const [moveIds, setMoveIds] = React.useState<string[]>([]);
   const [selectedAsset, setSelectedAsset] = React.useState<Asset | null>(null);
   const [sortOpen, setSortOpen] = React.useState(false);
   const [filterOpen, setFilterOpen] = React.useState(false);
@@ -76,22 +91,17 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
   const replaceInputRef = React.useRef<HTMLInputElement>(null);
   const replaceMutation = useReplaceAsset();
   const moveMutation = useMoveAssets();
+  const createFolderMutation = useCreateAssetFolder();
   const [sort, setSort] = React.useState("recent");
   const [typeFilter, setTypeFilter] = React.useState("all");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const upload = useUploadAsset();
-  const assetsQuery = useInfiniteAssets(folder || undefined);
-  const allAssetsQuery = useAssets(undefined, !folder);
+  const assetsQuery = useInfiniteAssets(folder);
+  const foldersQuery = useAssetFolders(folder);
+  const allFoldersQuery = useAssetFolders(undefined, true);
   const assets = assetsQuery.data?.pages.flatMap((page) => page.data) ?? [];
-  const allAssets = allAssetsQuery.data?.data ?? assets;
-  const folders = React.useMemo(() => {
-    const paths = new Set<string>();
-    for (const asset of allAssets) {
-      const parts = asset.publicId.split("/");
-      if (parts.length > 1) paths.add(parts.slice(0, -1).join("/"));
-    }
-    return Array.from(paths).sort();
-  }, [allAssets]);
+  const folders = foldersQuery.data?.data ?? [];
+  const allFolders = allFoldersQuery.data?.data ?? [];
   const filtered = assets.filter((asset) => {
     const matchesSearch = `${asset.publicId} ${asset.alternativeText ?? ""}`
       .toLowerCase()
@@ -144,10 +154,35 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
     assetsQuery.fetchNextPage,
   ]);
   const toggleSelected = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-  const moveSelected = () => {
-    if (!selectedIds.length) return;
-    const destination = window.prompt("Move selected assets to folder", folder || "santech-platform/website-content");
-    if (destination?.trim()) moveMutation.mutate({ ids: selectedIds, folder: destination.trim() }, { onSuccess: () => setSelectedIds([]) });
+  const openMoveDialog = (ids: string[]) => {
+    if (!ids.length) return;
+    moveMutation.reset();
+    setMoveIds(ids);
+    setMoveFolder(folder);
+    setMoveFolderOpen(true);
+  };
+  const moveSelected = () => openMoveDialog(selectedIds);
+  const submitMove = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!moveIds.length) return;
+    moveMutation.mutate({ ids: moveIds, folder: moveFolder }, {
+      onSuccess: () => {
+        setSelectedIds((current) => current.filter((id) => !moveIds.includes(id)));
+        setMoveFolderOpen(false);
+        setMoveIds([]);
+      },
+    });
+  };
+  const submitCreateFolder = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = newFolderName.trim();
+    if (!name) return;
+    createFolderMutation.mutate({ name, parent: folder }, {
+      onSuccess: () => {
+        setNewFolderName("");
+        setCreateFolderOpen(false);
+      },
+    });
   };
   const onReplace = (file: FileList | null) => {
     const fileItem = file?.[0];
@@ -159,7 +194,7 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
     Array.from(files).forEach((file) =>
       upload.mutate({
         file,
-        folder: folder || "santech-platform/website-content",
+        folder,
       }),
     );
   };
@@ -209,9 +244,8 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
                 <button
                   type="button"
                   onClick={() => {
-                    window.alert(
-                      "Folders are created when the first asset is uploaded into them.",
-                    );
+                    createFolderMutation.reset();
+                    setCreateFolderOpen(true);
                     setNewOpen(false);
                   }}
                   className="flex w-full items-center gap-3 rounded px-3 py-2.5 text-left text-sm text-slate-600 hover:bg-[#f1f0ff] hover:text-[#3730d8]"
@@ -368,22 +402,22 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
           </div>
         </div>
 
-        {!folder && folders.length > 0 ? (
+        {folders.length > 0 ? (
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
             {folders.map((item) => (
               <Link
-                key={item}
-                href={`/dashboard/media?folder=${encodeURIComponent(item)}`}
+                key={item.path}
+                href={`/dashboard/media?folder=${encodeURIComponent(item.path)}`}
                 className="relative flex min-h-[56px] items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 text-sm shadow-sm transition hover:border-[#a7a3ff] hover:shadow"
               >
                 <input
                   type="checkbox"
-                  aria-label={`Select folder ${folderName(item)}`}
+                  aria-label={`Select folder ${item.name}`}
                   onClick={(event) => event.preventDefault()}
                   className="size-5 rounded border-slate-300 accent-[#4a45ff]"
                 />
                 <Folder className="size-5 fill-slate-500 text-slate-500" />
-                <span className="truncate font-medium">{folderName(item)}</span>
+                <span className="truncate font-medium">{item.name}</span>
                 <span className="ml-auto text-slate-400">...</span>
               </Link>
             ))}
@@ -397,7 +431,42 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
               : "mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white"
           }
         >
-          {view === "grid" ? (
+          {assetsQuery.isLoading ? (
+            view === "grid" ? (
+              <div
+                role="status"
+                aria-label="Loading media"
+                className="col-span-full grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5"
+              >
+                {Array.from({ length: 10 }, (_, index) => (
+                  <div
+                    key={index}
+                    aria-hidden="true"
+                    className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+                  >
+                    <Skeleton className="aspect-[1.6] rounded-none" />
+                    <div className="flex h-14 items-center gap-2 px-3">
+                      <Skeleton className="size-4 shrink-0 rounded-sm" />
+                      <Skeleton className="h-3.5 w-3/4" />
+                    </div>
+                  </div>
+                ))}
+                <span className="sr-only">Loading media…</span>
+              </div>
+            ) : (
+              <div role="status" aria-label="Loading media" className="space-y-3 p-4">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <div key={index} aria-hidden="true" className="flex items-center gap-4">
+                    <Skeleton className="size-10 shrink-0 rounded-md" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-1/5" />
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </div>
+                ))}
+                <span className="sr-only">Loading media…</span>
+              </div>
+            )
+          ) : view === "grid" ? (
             visibleAssets.map((asset) => (
               <AssetCard
                 key={asset.id}
@@ -406,19 +475,29 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
                 selected={selectedIds.includes(asset.id)}
                 onToggle={() => toggleSelected(asset.id)}
                 onReplace={() => { setReplaceTarget(asset.id); replaceInputRef.current?.click(); }}
+                onMove={() => openMoveDialog([asset.id])}
               />
             ))
           ) : (
             <AssetTable
               assets={visibleAssets}
-              folders={folder ? [] : folders}
+              folders={folders}
               onOpen={setSelectedAsset}
               selectedIds={selectedIds}
               onToggle={toggleSelected}
               onReplace={(id) => { setReplaceTarget(id); replaceInputRef.current?.click(); }}
+              onMove={(id) => openMoveDialog([id])}
             />
           )}
-          {!assetsQuery.isLoading && visibleAssets.length === 0 ? (
+          {assetsQuery.isError ? (
+            <div role="alert" className="col-span-full flex flex-wrap items-center justify-center gap-3 rounded-lg border border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-700">
+              <span>Media could not be loaded. {assetsQuery.error.message}</span>
+              <Button type="button" variant="outline" className="bg-white" onClick={() => void assetsQuery.refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : null}
+          {!assetsQuery.isLoading && !assetsQuery.isError && visibleAssets.length === 0 ? (
             <div className="col-span-full rounded-lg border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-sm text-slate-500">
               No assets found in this location.
             </div>
@@ -440,11 +519,6 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
             </span>
           ) : null}
         </div>
-        {assetsQuery.isLoading ? (
-          <p className="mt-8 text-center text-sm text-slate-500">
-            Loading media...
-          </p>
-        ) : null}
         {upload.isError ? (
           <p className="mt-4 text-sm text-red-600">{upload.error.message}</p>
         ) : null}
@@ -455,12 +529,81 @@ export function MediaLibrary({ folder = "" }: { folder?: string }) {
             if (!open) setSelectedAsset(null);
           }}
         />
+        <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create folder</DialogTitle>
+              <DialogDescription>
+                {folder ? `Create a folder inside ${folderName(folder)}.` : "Create a folder in Home."}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={submitCreateFolder} className="grid gap-4">
+              <label className="grid gap-2 text-sm font-medium" htmlFor="new-media-folder">
+                Folder name
+                <Input
+                  id="new-media-folder"
+                  autoFocus
+                  value={newFolderName}
+                  onChange={(event) => setNewFolderName(event.target.value)}
+                  placeholder="e.g. Course materials"
+                  maxLength={100}
+                  required
+                />
+              </label>
+              {createFolderMutation.isError ? (
+                <p className="text-sm text-destructive">{createFolderMutation.error.message}</p>
+              ) : null}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setCreateFolderOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={!newFolderName.trim() || createFolderMutation.isPending}>
+                  {createFolderMutation.isPending ? "Creating…" : "Create folder"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={moveFolderOpen} onOpenChange={setMoveFolderOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Move {moveIds.length === 1 ? "file" : `${moveIds.length} files`}</DialogTitle>
+              <DialogDescription>Choose where these files should be stored.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={submitMove} className="grid gap-4">
+              <label className="grid gap-2 text-sm font-medium" htmlFor="move-media-folder">
+                Destination folder
+                <select
+                  id="move-media-folder"
+                  value={moveFolder}
+                  onChange={(event) => setMoveFolder(event.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal"
+                >
+                  <option value="">Home</option>
+                  {allFolders.map((item) => (
+                    <option key={item.path} value={item.path}>{item.path}</option>
+                  ))}
+                </select>
+              </label>
+              {allFoldersQuery.isError ? (
+                <p className="text-sm text-destructive">Available folders could not be loaded. Try again before moving files.</p>
+              ) : null}
+              {moveMutation.isError ? (
+                <p className="text-sm text-destructive">{moveMutation.error.message}</p>
+              ) : null}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setMoveFolderOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={moveMutation.isPending || allFoldersQuery.isLoading || allFoldersQuery.isError}>
+                  {moveMutation.isPending ? "Moving…" : "Move"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );
 }
 
-function AssetCard({ asset, onOpen, selected, onToggle, onReplace }: { asset: Asset; onOpen: () => void; selected: boolean; onToggle: () => void; onReplace: () => void }) {
+function AssetCard({ asset, onOpen, selected, onToggle, onReplace, onMove }: { asset: Asset; onOpen: () => void; selected: boolean; onToggle: () => void; onReplace: () => void; onMove: () => void }) {
   const deleteAsset = useDeleteAsset();
   const name = folderName(asset.publicId);
   const copy = () => {
@@ -529,7 +672,7 @@ function AssetCard({ asset, onOpen, selected, onToggle, onReplace }: { asset: As
               Download media
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-3 px-3 py-2.5">
+            <DropdownMenuItem className="gap-3 px-3 py-2.5" onClick={onMove}>
               <ArrowRight className="size-4 text-slate-400" />
               Move to folder
             </DropdownMenuItem>
@@ -581,13 +724,15 @@ function AssetTable({
   selectedIds,
   onToggle,
   onReplace,
+  onMove,
 }: {
   assets: Asset[];
-  folders: string[];
+  folders: AssetFolder[];
   onOpen: (asset: Asset) => void;
   selectedIds: string[];
   onToggle: (id: string) => void;
   onReplace: (id: string) => void;
+  onMove: (id: string) => void;
 }) {
   const copy = (value: string) => {
     if (typeof navigator !== "undefined") navigator.clipboard?.writeText(value);
@@ -609,7 +754,7 @@ function AssetTable({
         <span />
       </div>
       {folders.map((folder) => (
-        <TableFolderRow key={folder} folder={folder} onCopy={copy} />
+        <TableFolderRow key={folder.path} folder={folder} onCopy={copy} />
       ))}
       {assets.map((asset) => (
         <TableAssetRow
@@ -620,6 +765,7 @@ function AssetTable({
           selected={selectedIds.includes(asset.id)}
           onToggle={() => onToggle(asset.id)}
           onReplace={() => onReplace(asset.id)}
+          onMove={() => onMove(asset.id)}
         />
       ))}
     </div>
@@ -629,7 +775,7 @@ function TableFolderRow({
   folder,
   onCopy,
 }: {
-  folder: string;
+  folder: AssetFolder;
   onCopy: (value: string) => void;
 }) {
   return (
@@ -637,32 +783,27 @@ function TableFolderRow({
       <span>
         <input
           type="checkbox"
-          aria-label={`Select folder ${folderName(folder)}`}
+          aria-label={`Select folder ${folder.name}`}
           className="size-5 rounded border-slate-300 accent-[#4a45ff]"
         />
       </span>
-      <span className="flex items-center gap-3 font-semibold text-[#172554]">
+      <Link
+        href={`/dashboard/media?folder=${encodeURIComponent(folder.path)}`}
+        className="flex items-center gap-3 font-semibold text-[#172554] hover:text-[#3730d8]"
+      >
         <Folder className="size-5 fill-slate-500 text-slate-500" />
-        {folderName(folder)}
-      </span>
+        {folder.name}
+      </Link>
       <span>-</span>
       <span>-</span>
       <span>-</span>
-      <ActionButton label={`Actions for folder ${folderName(folder)}`}>
+      <ActionButton label={`Actions for folder ${folder.name}`}>
         <DropdownMenuItem
           className="gap-3"
-          onClick={() => onCopy(folder)}
+          onClick={() => onCopy(folder.path)}
         >
           <Copy className="size-4" />
           Copy link to folder
-        </DropdownMenuItem>
-        <DropdownMenuItem className="gap-3">
-          <Pencil className="size-4" />
-          Rename folder
-        </DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" className="gap-3">
-          <Trash2 className="size-4" />
-          Delete folder
         </DropdownMenuItem>
       </ActionButton>
     </div>
@@ -675,6 +816,7 @@ function TableAssetRow({
   selected,
   onToggle,
   onReplace,
+  onMove,
 }: {
   asset: Asset;
   onCopy: (value: string) => void;
@@ -682,6 +824,7 @@ function TableAssetRow({
   selected: boolean;
   onToggle: () => void;
   onReplace: () => void;
+  onMove: () => void;
 }) {
   const missingMetadata = !asset.alternativeText;
   return (
@@ -720,6 +863,10 @@ function TableAssetRow({
         label={`Actions for ${folderName(asset.publicId)}`}
         onClick={(event) => event.stopPropagation()}
       >
+        <DropdownMenuItem className="gap-3" onClick={onMove}>
+          <ArrowRight className="size-4" />
+          Move to folder
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="gap-3"
           onClick={() => onCopy(asset.url)}

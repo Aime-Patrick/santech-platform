@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createWebsiteEntry, deleteAsset, deleteWebsiteEntry, getWebsiteEntry, listAssets, listWebsiteEntries, moveAssets, replaceAsset, updateAsset, updateWebsiteEntry, uploadAsset } from "../api/website-content-api";
+import { createAssetFolder, createWebsiteEntry, deleteAsset, deleteWebsiteEntry, getWebsiteEntry, listAssetFolders, listAssets, listWebsiteEntries, moveAssets, replaceAsset, updateAsset, updateWebsiteEntry, uploadAsset } from "../api/website-content-api";
 import { websiteContentKeys } from "../queryKeys";
 import type { AssetMoveInput, AssetUpdateInput, WebsiteEntryInput, WebsiteEntryUpdateInput } from "../types";
 
@@ -22,14 +22,21 @@ export function useDeleteWebsiteEntry() {
   return useMutation({ mutationFn: deleteWebsiteEntry, onSuccess: (_, id) => { queryClient.invalidateQueries({ queryKey: websiteContentKeys.lists() }); queryClient.removeQueries({ queryKey: websiteContentKeys.detail(id) }); } });
 }
 export function useAssets(folder?: string, enabled = true) {
-  return useQuery({ queryKey: websiteContentKeys.assets(folder), queryFn: () => listAssets(folder), enabled, staleTime: 1000 * 60 * 5 });
+  return useQuery({ queryKey: websiteContentKeys.assets(folder), queryFn: () => listAssets(folder), enabled, staleTime: 1000 * 60 * 30, gcTime: 1000 * 60 * 60 * 2 });
 }
 export function useInfiniteAssets(folder?: string, enabled = true) {
-  return useInfiniteQuery({ queryKey: [...websiteContentKeys.assets(folder), "infinite"], queryFn: ({ pageParam }) => listAssets(folder, pageParam, 15), initialPageParam: 1, getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextPage ?? undefined : undefined, enabled, staleTime: 1000 * 60 * 5 });
+  return useInfiniteQuery({ queryKey: [...websiteContentKeys.assets(folder), "infinite"], queryFn: ({ pageParam }) => listAssets(folder, pageParam, 15), initialPageParam: 1, getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextPage ?? undefined : undefined, enabled, staleTime: 1000 * 60 * 30, gcTime: 1000 * 60 * 60 * 2 });
+}
+export function useAssetFolders(parent?: string, all = false) {
+  return useQuery({ queryKey: websiteContentKeys.folders(parent, all), queryFn: () => listAssetFolders(parent, all), staleTime: 1000 * 60 * 10, gcTime: 1000 * 60 * 60 });
+}
+export function useCreateAssetFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: createAssetFolder, onSuccess: () => queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "folders"] }) });
 }
 export function useUploadAsset() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ file, folder }: { file: File; folder?: string }) => uploadAsset(file, folder), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }) });
+  return useMutation({ mutationFn: ({ file, folder }: { file: File; folder?: string }) => uploadAsset(file, folder), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }); queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "folders"] }); } });
 }
 export function useReplaceAsset() {
   const queryClient = useQueryClient();
@@ -37,7 +44,7 @@ export function useReplaceAsset() {
 }
 export function useMoveAssets() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (input: AssetMoveInput) => moveAssets(input), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }) });
+  return useMutation({ mutationFn: (input: AssetMoveInput) => moveAssets(input), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "assets"] }); queryClient.invalidateQueries({ queryKey: [...websiteContentKeys.all, "folders"] }); } });
 }
 export function useUpdateAsset() {
   const queryClient = useQueryClient();

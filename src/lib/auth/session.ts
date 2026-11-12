@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 
 export const SESSION_COOKIE = "santech_session";
@@ -32,7 +34,7 @@ export async function createSession(userId: string, rememberMe = false) {
   });
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -61,6 +63,12 @@ export async function getCurrentUser() {
   if (!session || session.revokedAt || session.expiresAt <= new Date()) return null;
 
   return session.user;
+});
+
+export async function requireCurrentUser() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return user;
 }
 
 export async function revokeCurrentSession() {
